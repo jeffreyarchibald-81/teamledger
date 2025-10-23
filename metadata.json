@@ -1,0 +1,5 @@
+{
+  "name": "TeamLedger",
+  "description": "A web application to build an organizational chart and instantly see the financial impact of each role, including salary, overhead, revenue, profit, and margins. Users can create, edit, and delete roles in a hierarchical structure and view a real-time financial summary.",
+  "requestFramePermissions": []
+}
