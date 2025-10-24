@@ -1,20 +1,23 @@
-
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { Position, PositionInput, PositionUpdate, TreeNode } from './types';
-import { SALARY_TO_TOTAL_SALARY_MULTIPLIER, TOTAL_SALARY_TO_OVERHEAD_MULTIPLIER, ANNUAL_BILLABLE_HOURS } from './constants';
 import { initialData } from './initialData';
 import SummaryTable from './components/SummaryTable';
 import PositionEditor from './components/PositionEditor';
 import OrgChart from './components/OrgChart';
 import OrgChartListView from './components/OrgChartListView';
 
-const calculateFinancials = (positionInput: { salary: number; rate: number; utilization: number; }): Pick<Position, 'totalSalary' | 'overheadCost' | 'totalCost' | 'revenue' | 'profit' | 'margin'> => {
-  const totalSalary = positionInput.salary * SALARY_TO_TOTAL_SALARY_MULTIPLIER;
-  const overheadCost = totalSalary * TOTAL_SALARY_TO_OVERHEAD_MULTIPLIER;
+const calculateFinancials = (
+  positionInput: { salary: number; rate: number; utilization: number; },
+  benefitsMultiplier: number,
+  overheadMultiplier: number,
+  annualBillableHours: number,
+): Pick<Position, 'totalSalary' | 'overheadCost' | 'totalCost' | 'revenue' | 'profit' | 'margin'> => {
+  const totalSalary = positionInput.salary * benefitsMultiplier;
+  const overheadCost = totalSalary * overheadMultiplier;
   const totalCost = totalSalary + overheadCost;
-  const revenue = positionInput.rate * (positionInput.utilization / 100) * ANNUAL_BILLABLE_HOURS;
+  const revenue = positionInput.rate * (positionInput.utilization / 100) * annualBillableHours;
   const profit = revenue - totalCost;
   const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
@@ -59,6 +62,14 @@ const PhotoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 const App: React.FC = () => {
+  const [benefitsPercent, setBenefitsPercent] = useState(30);
+  const [overheadPercent, setOverheadPercent] = useState(15);
+  const [workWeekHours, setWorkWeekHours] = useState(35);
+
+  const benefitsMultiplier = useMemo(() => 1 + benefitsPercent / 100, [benefitsPercent]);
+  const overheadMultiplier = useMemo(() => overheadPercent / 100, [overheadPercent]);
+  const annualBillableHours = useMemo(() => workWeekHours * 44, [workWeekHours]); // Assume 44 billable weeks per year
+
   const [positions, setPositions] = useState<Position[]>(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const data = urlParams.get('data');
@@ -67,13 +78,17 @@ const App: React.FC = () => {
             const decodedData = atob(data);
             const parsedPositions = JSON.parse(decodedData);
             if (Array.isArray(parsedPositions) && parsedPositions.every(p => 'id' in p && 'role' in p)) {
-                return parsedPositions;
+                return parsedPositions; // Assuming data in URL is already calculated
             }
         } catch (error) {
             console.error("Failed to parse positions from URL, loading sample data.", error);
         }
     }
-    return initialData;
+    // Calculate financials for initial data
+    return initialData.map(p => {
+        const financials = calculateFinancials(p, 1 + 30 / 100, 15 / 100, 35 * 44);
+        return { ...p, ...financials };
+    });
   });
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -83,8 +98,20 @@ const App: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [duplicateSource, setDuplicateSource] = useState<Position | null>(null);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const orgChartRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    setPositions(currentPositions =>
+        currentPositions.map(p => {
+            const financials = calculateFinancials(p, benefitsMultiplier, overheadMultiplier, annualBillableHours);
+            return { ...p, ...financials };
+        })
+    );
+  }, [benefitsMultiplier, overheadMultiplier, annualBillableHours]);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -99,7 +126,7 @@ const App: React.FC = () => {
   }, []);
 
   const addPosition = (positionInput: PositionInput) => {
-    const financials = calculateFinancials(positionInput);
+    const financials = calculateFinancials(positionInput, benefitsMultiplier, overheadMultiplier, annualBillableHours);
     const newPosition: Position = {
       id: crypto.randomUUID(),
       ...positionInput,
@@ -109,11 +136,11 @@ const App: React.FC = () => {
   };
 
   const updatePosition = useCallback((positionUpdate: PositionUpdate) => {
-    const financials = calculateFinancials(positionUpdate);
+    const financials = calculateFinancials(positionUpdate, benefitsMultiplier, overheadMultiplier, annualBillableHours);
     setPositions(currentPositions => currentPositions.map(p =>
       p.id === positionUpdate.id ? { ...p, ...positionUpdate, ...financials } : p
     ));
-  }, []);
+  }, [benefitsMultiplier, overheadMultiplier, annualBillableHours]);
 
   const deletePosition = (id: string) => {
     setPositions(prev => {
@@ -134,7 +161,11 @@ const App: React.FC = () => {
   };
 
   const loadSampleData = () => {
-    setPositions(initialData);
+    const recalculatedSampleData = initialData.map(p => {
+        const financials = calculateFinancials(p, benefitsMultiplier, overheadMultiplier, annualBillableHours);
+        return { ...p, ...financials };
+    });
+    setPositions(recalculatedSampleData);
     setIsActionMenuOpen(false);
     window.history.pushState({}, '', window.location.pathname);
   };
@@ -408,8 +439,86 @@ const App: React.FC = () => {
               </AnimatePresence>
             </div>
           </motion.div>
+          
           <motion.div variants={itemVariants}>
-            <h2 className="text-2xl font-semibold mb-4">Financial Summary</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold">Financial Summary</h2>
+              <motion.button
+                onClick={() => setIsSettingsOpen(prev => !prev)}
+                className="bg-brand-surface hover:bg-gray-800/60 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center border border-brand-border"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Settings
+                <motion.div animate={{ rotate: isSettingsOpen ? 180 : 0 }}>
+                  <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
+                </motion.div>
+              </motion.button>
+            </div>
+             <AnimatePresence>
+              {isSettingsOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0, y: -10 }}
+                  animate={{ height: 'auto', opacity: 1, y: 0, transition: { y: { duration: 0.2 }, opacity: { duration: 0.3, delay: 0.1 } } }}
+                  exit={{ height: 0, opacity: 0, y: -10, transition: { height: { duration: 0.3 }, opacity: { duration: 0.2 } } }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-brand-surface/50 p-6 rounded-lg border border-brand-border mb-4">
+                    <h3 className="text-lg font-semibold mb-4 text-white">Global Financial Settings</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+                      <div>
+                        <label htmlFor="benefits-percent" className="block text-sm font-medium text-gray-300">Total Salary Multiplier</label>
+                        <p className="mt-1 text-xs text-gray-500">Accounts for benefits, taxes, etc.</p>
+                        <div className="mt-2 flex rounded-md shadow-sm">
+                          <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-brand-border bg-gray-700 text-gray-300 sm:text-sm">
+                            Salary +
+                          </span>
+                          <input
+                            type="number"
+                            id="benefits-percent"
+                            value={benefitsPercent}
+                            onChange={e => setBenefitsPercent(parseFloat(e.target.value) || 0)}
+                            className="block w-full flex-1 rounded-none bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm"
+                          />
+                          <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-brand-border bg-gray-700 text-gray-300 sm:text-sm">
+                            %
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="overhead-percent" className="block text-sm font-medium text-gray-300">Overhead Cost Multiplier</label>
+                        <p className="mt-1 text-xs text-gray-500">Accounts for rent, software, etc.</p>
+                        <div className="mt-2 flex rounded-md shadow-sm">
+                          <input
+                            type="number"
+                            id="overhead-percent"
+                            value={overheadPercent}
+                            onChange={e => setOverheadPercent(parseFloat(e.target.value) || 0)}
+                            className="block w-full flex-1 rounded-none rounded-l-md bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm"
+                          />
+                          <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-brand-border bg-gray-700 text-gray-300 sm:text-sm">
+                            % of Total Salary
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="work-week-hours" className="block text-sm font-medium text-gray-300">Work Week (Hours)</label>
+                        <p className="mt-1 text-xs text-gray-500">Affects Revenue totals.</p>
+                        <div className="mt-2 flex rounded-md shadow-sm">
+                          <input
+                            type="number"
+                            id="work-week-hours"
+                            value={workWeekHours}
+                            onChange={e => setWorkWeekHours(parseFloat(e.target.value) || 0)}
+                            className="block w-full flex-1 rounded-md bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <SummaryTable 
               positions={positions} 
               onUpdatePosition={updatePosition} 
@@ -428,7 +537,7 @@ const App: React.FC = () => {
                           Most org chart tools stop at boxes and lines. This one goes further, tying each role to salary, utilization, and overhead so you can see how your structure affects profitability.
                       </p>
                       <p className="text-gray-400 mt-4" style={{ fontSize: '1.15rem' }}>
-                          Whether you’re mapping a five-person startup or a fifty-person agency, this organizational structure chart maker gives you the full picture: who reports to whom, what each role costs, and how changes ripple through your business model.
+                          Whether you’re mapping a five-person startup or a fifty-person agency, this organizational structure chart maker gives you the full picture: who reports to whom, what each role costs, and how changes ripple through your financial model.
                       </p>
                   </section>
                   
@@ -439,7 +548,7 @@ const App: React.FC = () => {
                       </p>
                       <ul className="list-disc list-inside text-gray-400 mt-4 space-y-2" style={{ fontSize: '1.15rem' }}>
                           <li>Build your team structure visually. Create, update, delete, and organize roles into clear hierarchies.</li>
-                          <li>Attach financial data. Add salaries, billable rates, and capacity to every seat. True salary is automatically calculated.</li>
+                          <li>Attach financial data. Add salaries, billable rates, and capacity to every seat. Real costs are automatically calculated.</li>
                           <li>Plan future hires. Model “what-if” scenarios before you make your next hire.</li>
                       </ul>
                       <p className="text-gray-400 mt-4" style={{ fontSize: '1.15rem' }}>
@@ -454,8 +563,9 @@ const App: React.FC = () => {
                       </p>
                       <ul className="list-disc list-inside text-gray-400 mt-4 space-y-2" style={{ fontSize: '1.15rem' }}>
                           <li>Agency owners who want to balance creative growth with profit.</li>
+                          <li>Any service businesses who bill by the hour, or by fixed price.</li>
                           <li>Startup founders mapping their first org structure.</li>
-                          <li>Operations leaders bringing clarity to reporting lines and budgets.</li>
+                          <li>Operations leaders looking for improved department fiscal understanding.</li>
                       </ul>
                       <p className="text-gray-400 mt-4" style={{ fontSize: '1.15rem' }}>
                           If you care about both structure and sustainability, this tool was built for you.
