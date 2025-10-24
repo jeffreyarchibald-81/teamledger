@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+// FIX: import Variants to fix framer-motion type error
+import { motion, Variants } from 'framer-motion';
 import { Position, PositionInput, PositionUpdate } from '../types';
 
 interface PositionEditorProps {
@@ -63,7 +65,8 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
     hidden: { opacity: 0 },
     visible: { opacity: 1 }
   };
-  const modalVariants = {
+  // FIX: Add Variants type to fix framer-motion type error
+  const modalVariants: Variants = {
     hidden: { opacity: 0, y: 30, scale: 0.95 },
     visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
     exit: { opacity: 0, y: 20, scale: 0.95 }
