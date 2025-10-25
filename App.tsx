@@ -1,5 +1,4 @@
 
-
 // FIX: Removed non-existent 'useAistudio' from React import and combined the React imports.
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 // FIX: import Variants to fix framer-motion type errors
@@ -751,11 +750,20 @@ interface UnlockModalProps {
 const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) => {
     const { unlockApp } = useAuth();
     const [email, setEmail] = useState('');
+    const [emailError, setEmailError] = useState('');
     const [status, setStatus] = useState<'idle' | 'submitting'>('idle');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (status !== 'idle' || !email) return;
+
+        // Simple email validation regex
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setEmailError('Please enter a valid email address.');
+            return;
+        }
+        setEmailError(''); // Clear error on successful validation
+
         setStatus('submitting');
         await unlockApp(email);
         onUnlockSuccess();
@@ -810,20 +818,26 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
                 </ul>
                 
                 <p className="text-gray-400 mt-4 text-sm">No fees, no spam, and you can unsubscribe at any time.</p>
-
-                <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    required
-                    className="mt-4 w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
-                />
+                
+                <div className="mt-4">
+                  <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (emailError) setEmailError('');
+                      }}
+                      placeholder="your@email.com"
+                      required
+                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:border-brand-accent ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-brand-border focus:ring-brand-accent'}`}
+                  />
+                  {emailError && <p className="text-red-400 text-sm mt-1">{emailError}</p>}
+                </div>
               </div>
               <div className="bg-gray-900/50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-start sm:items-center sm:space-x-4 rounded-b-lg">
                 <motion.button 
                     type="submit" 
-                    disabled={status === 'submitting'} 
+                    disabled={status === 'submitting' || !email} 
                     whileHover={{ scale: 1.05 }} 
                     whileTap={{ scale: 0.95 }} 
                     className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"

@@ -1,41 +1,31 @@
 
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
 
-// This is the Vercel serverless function handler.
-// It runs on the server, not in the browser.
-export default async function handler(req: Request) {
+// This is the Vercel serverless function handler, updated for the Node.js runtime.
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Only allow POST requests
     if (req.method !== 'POST') {
-        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-            status: 405,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        res.setHeader('Allow', ['POST']);
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
-        const body = await req.json();
-        const { dataForAnalysis } = body;
+        const { dataForAnalysis } = req.body;
 
         // Ensure the necessary data is present in the request
         if (!dataForAnalysis) {
-            return new Response(JSON.stringify({ error: 'Missing dataForAnalysis in request body' }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' },
-            });
+            return res.status(400).json({ error: 'Missing dataForAnalysis in request body' });
         }
         
         // Securely access the API key from environment variables on the server
         const apiKey = process.env.API_KEY;
         if (!apiKey) {
-             return new Response(JSON.stringify({ error: 'API key not configured on server' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            });
+             return res.status(500).json({ error: 'API key not configured on server' });
         }
         
         const ai = new GoogleGenAI({ apiKey });
 
-        // The prompt is the same as it was on the client-side
         const prompt = `
             You are an expert business consultant specializing in organizational structure for service-based businesses.
             Analyze the following organizational structure and financial data.
@@ -50,7 +40,7 @@ export default async function handler(req: Request) {
             
             **Guidelines for your analysis:**
             - **Rule of 7:** Pay close attention to the number of direct reports for each manager ('directReports' property). A manager with fewer than 3-4 reports might suggest the team is top-heavy. A manager with more than 7-8 reports is likely over-extended and may become a bottleneck. Flag these as risks or opportunities.
-            - **Manager Utilization:** A manager with more than 2 direct reports and a high utilization target (e.g., over 50-60%) is a major risk. Their management duties will likely conflict with their billable work, leading to burnout or underperformance in one or both areas. Flag this as a significant risk.
+            - **Manager Utilization:** A manager with 2 or more direct reports should have their utilization scrutinized. If their utilization target is high (e.g., over 50-60%), this is a major risk. Their management duties will conflict with their billable work, leading to burnout or underperformance. As a team grows, a manager's utilization *must* decrease. Flag any situation that violates this principle as a significant risk.
             - **Actionable Insights:** Focus on high-impact insights about profitability, team balance, and growth. For "Risks & Opportunities," suggest concrete actions.
             - **Clarity:** Each bullet point should be a single, clear sentence.
             - **Specificity:** Refer to specific roles or departments where relevant.
@@ -88,18 +78,13 @@ export default async function handler(req: Request) {
             }
         });
         
-        // Return the successful JSON response from the AI
-        return new Response(response.text, {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        // Send the successful JSON response from the AI
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(200).send(response.text);
 
     } catch (error) {
         console.error("AI analysis failed in serverless function:", error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        return new Response(JSON.stringify({ error: 'Internal Server Error', details: errorMessage }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return res.status(500).json({ error: 'Internal Server Error', details: errorMessage });
     }
 }
