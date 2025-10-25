@@ -5,7 +5,6 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 // FIX: import Variants to fix framer-motion type errors
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { GoogleGenAI, Type } from '@google/genai';
 import { Position, PositionInput, PositionUpdate, TreeNode, AIAnalysisResult } from './types';
 import { initialData } from './initialData';
 import SummaryTable from './components/SummaryTable';
@@ -346,9 +345,7 @@ const App: React.FC = () => {
     setAiAnalysis(null);
 
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-        
-        // Calculate direct reports for each manager
+        // Calculate direct reports for each manager to send to the backend
         const positionsWithReportCount = positions.map(p => {
             const reports = positions.filter(r => r.managerId === p.id);
             return {
@@ -367,59 +364,20 @@ const App: React.FC = () => {
             }
         };
 
-        const prompt = `
-            You are an expert business consultant specializing in organizational structure for service-based businesses.
-            Analyze the following organizational structure and financial data.
-            Your tone should be casual and direct. Get straight to the point.
-            Provide a concise analysis covering three key areas: Strengths, Potential Risks/Opportunities, and Key Observations.
-            
-            **Important Context & Rules:**
-            - This data represents a forward-looking plan or model, not necessarily the current state of the business. Utilization targets are aspirational goals.
-            - The 'benefitsPercent' setting creates a total salary multiplier to estimate the true cost of an employee (including benefits, payroll taxes, etc.). The 30% default is a common industry standard.
-            - The 'overheadPercent' accounts for operational costs (rent, software, etc.). The 15% default is a standard baseline but can be adjusted for leaner organizations.
-            - **Crucially, do not comment on the negative profit margins of C-suite or executive roles (like CEO, COO).** These positions are strategic and not expected to be billable. It is normal and acceptable for them to show a loss on paper; their value is in leading the company, not in billable work.
-            
-            **Guidelines for your analysis:**
-            - **Rule of 7:** Pay close attention to the number of direct reports for each manager ('directReports' property). A manager with fewer than 3-4 reports might suggest the team is top-heavy. A manager with more than 7-8 reports is likely over-extended and may become a bottleneck. Flag these as risks or opportunities.
-            - **Manager Utilization:** A manager with more than 2 direct reports and a high utilization target (e.g., over 50-60%) is a major risk. Their management duties will likely conflict with their billable work, leading to burnout or underperformance in one or both areas. Flag this as a significant risk.
-            - **Actionable Insights:** Focus on high-impact insights about profitability, team balance, and growth. For "Risks & Opportunities," suggest concrete actions.
-            - **Clarity:** Each bullet point should be a single, clear sentence.
-            - **Specificity:** Refer to specific roles or departments where relevant.
-
-            Here is the data:
-            ${JSON.stringify(dataForAnalysis, null, 2)}
-        `;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        strengths: {
-                            type: Type.ARRAY,
-                            description: "Positive aspects of the org structure, team balance, or financial health. 2-4 points.",
-                            items: { type: Type.STRING }
-                        },
-                        risks_opportunities: {
-                            type: Type.ARRAY,
-                            description: "Potential issues, bottlenecks, financial risks, or opportunities for improvement/growth. 2-4 points.",
-                            items: { type: Type.STRING }
-                        },
-                        key_observations: {
-                            type: Type.ARRAY,
-                            description: "Neutral, interesting, or noteworthy financial or structural observations. 2-4 points.",
-                            items: { type: Type.STRING }
-                        }
-                    },
-                    required: ['strengths', 'risks_opportunities', 'key_observations']
-                }
-            }
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ dataForAnalysis }),
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `API request failed with status ${response.status}`);
+        }
         
-        const analysisResult = JSON.parse(response.text) as AIAnalysisResult;
+        const analysisResult = await response.json() as AIAnalysisResult;
         setAiAnalysis(analysisResult);
 
     } catch (error) {
@@ -428,7 +386,7 @@ const App: React.FC = () => {
     } finally {
         setIsAnalyzing(false);
     }
-};
+  };
 
   const tree = useMemo(() => {
     const buildTree = (items: Position[], parentId: string | null = null, depth = 0): TreeNode[] => {
