@@ -19,9 +19,17 @@ interface SummaryTableProps {
     onEdit: (position: Position) => void;
     onDuplicate: (position: Position) => void;
     onDelete: (id: string) => void;
+    isUnlocked: boolean;
+    onUnlockRequest: () => void;
 }
 
-const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition, onAddSubordinate, onEdit, onDuplicate, onDelete }) => {
+const SparklesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+    </svg>
+);
+
+const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition, onAddSubordinate, onEdit, onDuplicate, onDelete, isUnlocked, onUnlockRequest }) => {
   const [editingCell, setEditingCell] = useState<{ id: string; field: EditableField } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -97,10 +105,14 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
         .filter(p => p.rate > 0)
         .reduce((acc, p) => acc + (p.rate * 1540), 0);
     
+    const billablePositions = positions.filter(p => p.rate > 0);
+    const totalRate = billablePositions.reduce((acc, p) => acc + p.rate, 0);
+    const avgRate = billablePositions.length > 0 ? totalRate / billablePositions.length : 0;
+    
     const avgUtilization = totalPotentialRevenue > 0 ? (total.revenue / totalPotentialRevenue) * 100 : 0;
     const totalMargin = total.revenue > 0 ? (total.profit / total.revenue) * 100 : 0;
 
-    return { ...total, avgUtilization, totalMargin };
+    return { ...total, avgUtilization, totalMargin, avgRate };
   }, [positions]);
 
   const headers = [
@@ -121,7 +133,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
             />
         );
     }
-    return <div onClick={() => handleEdit(pos, field)} className="cursor-pointer h-full w-full border-b border-dashed border-brand-accent hover:border-white">{displayValue}</div>;
+    return <div onClick={() => handleEdit(pos, field)} className="cursor-pointer h-full w-full border-b border-dashed border-transparent hover:border-brand-accent">{displayValue}</div>;
   };
 
   const menuItems = (pos: Position) => [
@@ -134,7 +146,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
   return (
     <div className="overflow-x-auto bg-brand-surface rounded-lg shadow-soft-glow border border-brand-border">
       <table className="min-w-full text-sm text-left text-gray-300">
-        <thead className="text-xs text-gray-400 uppercase bg-gray-900/50">
+        <thead className="text-xs text-gray-400 uppercase bg-black">
           <tr>
             {headers.map(header => (
               <th key={header} scope="col" className="px-6 py-3 whitespace-nowrap tracking-wider">{header}</th>
@@ -199,44 +211,72 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
           ))}
           </AnimatePresence>
         </motion.tbody>
-        <tfoot className="font-bold text-white bg-black/50">
-            <tr>
-                <td className="px-6 py-4 align-bottom">Totals</td>
-                <td className="px-6 py-4">
-                    <div className="text-xs font-normal text-gray-400 mb-1">Salary</div>
-                    <div>{formatCurrency(totals.salary)}</div>
+        {isUnlocked ? (
+            <tfoot className="font-bold text-white bg-black/50">
+                <tr>
+                    <td className="px-6 py-4 align-bottom">Totals</td>
+                    <td className="px-6 py-4">
+                        <div className="text-xs font-normal text-gray-300 mb-1">Salary</div>
+                        <div>{formatCurrency(totals.salary)}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="text-xs font-normal text-gray-300 mb-1">Total Salary</div>
+                        <div>{formatCurrency(totals.totalSalary)}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="text-xs font-normal text-gray-300 mb-1">Overhead Cost</div>
+                        <div>{formatCurrency(totals.overheadCost)}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="text-xs font-normal text-gray-300 mb-1">Avg. Rate</div>
+                        <div>{formatCurrency(totals.avgRate)}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="text-xs font-normal text-gray-300 mb-1">Avg. Utilization</div>
+                        <div>{formatPercent(totals.avgUtilization)}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="text-xs font-normal text-gray-300 mb-1">Revenue</div>
+                        <div>{formatCurrency(totals.revenue)}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="text-xs font-normal text-gray-300 mb-1">Profit</div>
+                        <div className={`${totals.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totals.profit)}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="text-xs font-normal text-gray-300 mb-1">Margin</div>
+                        <div className={`${totals.totalMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(totals.totalMargin)}</div>
+                    </td>
+                    <td className="px-6 py-4"></td>
+                </tr>
+            </tfoot>
+        ) : (
+            <tfoot className="relative">
+                <tr className="blur-md select-none pointer-events-none font-bold text-white bg-black/50">
+                    <td className="px-6 py-4 align-bottom">Totals</td>
+                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Salary</div><div>$1,800,000</div></td>
+                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Total Salary</div><div>$2,340,000</div></td>
+                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Overhead Cost</div><div>$351,000</div></td>
+                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Avg. Rate</div><div>$250</div></td>
+                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Avg. Utilization</div><div>76%</div></td>
+                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Revenue</div><div>$3,561,900</div></td>
+                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Profit</div><div className="text-green-400">$870,900</div></td>
+                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Margin</div><div className="text-green-400">24%</div></td>
+                    <td className="px-6 py-4"></td>
+                </tr>
+                <td colSpan={10} className="absolute inset-0 flex items-center justify-center p-0">
+                    <motion.button 
+                        onClick={onUnlockRequest}
+                        className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center shadow-soft-glow-lg"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <SparklesIcon className="w-5 h-5 mr-2" />
+                        Unlock Full Financials, Exporting & AI Insights
+                    </motion.button>
                 </td>
-                <td className="px-6 py-4">
-                    <div className="text-xs font-normal text-gray-400 mb-1">Total Salary</div>
-                    <div>{formatCurrency(totals.totalSalary)}</div>
-                </td>
-                <td className="px-6 py-4">
-                    <div className="text-xs font-normal text-gray-400 mb-1">Overhead Cost</div>
-                    <div>{formatCurrency(totals.overheadCost)}</div>
-                </td>
-                <td className="px-6 py-4">
-                    <div className="text-xs font-normal text-gray-400 mb-1">Rate</div>
-                    <div className="text-gray-500">-</div>
-                </td>
-                <td className="px-6 py-4">
-                    <div className="text-xs font-normal text-gray-400 mb-1">Utilization</div>
-                    <div>{formatPercent(totals.avgUtilization)}</div>
-                </td>
-                <td className="px-6 py-4">
-                    <div className="text-xs font-normal text-gray-400 mb-1">Revenue</div>
-                    <div>{formatCurrency(totals.revenue)}</div>
-                </td>
-                <td className="px-6 py-4">
-                    <div className="text-xs font-normal text-gray-400 mb-1">Profit</div>
-                    <div className={`${totals.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totals.profit)}</div>
-                </td>
-                <td className="px-6 py-4">
-                    <div className="text-xs font-normal text-gray-400 mb-1">Margin</div>
-                    <div className={`${totals.totalMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(totals.totalMargin)}</div>
-                </td>
-                <td className="px-6 py-4"></td>
-            </tr>
-        </tfoot>
+            </tfoot>
+        )}
       </table>
     </div>
   );
@@ -272,7 +312,7 @@ const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 const DocumentDuplicateIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 // FIX: Removed duplicate `fill` and `viewBox` attributes.
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m9.75 11.375c.621 0 1.125-.504 1.125-1.125v-9.25a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5 .124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m9.75 11.375c.621 0 1.125-.504 1.125-1.125v-9.25a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
     </svg>
 );
 

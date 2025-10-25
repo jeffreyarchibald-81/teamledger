@@ -1,4 +1,5 @@
 
+
 export interface Position {
   id: string;
   role: string;
@@ -24,4 +25,10 @@ export type PositionUpdate = Omit<Position, 'totalSalary' | 'overheadCost' | 'to
 export interface TreeNode extends Position {
   children: TreeNode[];
   depth: number;
+}
+
+export interface AIAnalysisResult {
+  strengths: string[];
+  risks_opportunities: string[];
+  key_observations: string[];
 }

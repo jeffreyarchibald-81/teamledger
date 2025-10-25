@@ -1,14 +1,19 @@
 
+// FIX: Removed non-existent 'useAistudio' from React import and combined the React imports.
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 // FIX: import Variants to fix framer-motion type errors
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { Position, PositionInput, PositionUpdate, TreeNode } from './types';
+import { GoogleGenAI, Type } from '@google/genai';
+import { Position, PositionInput, PositionUpdate, TreeNode, AIAnalysisResult } from './types';
 import { initialData } from './initialData';
 import SummaryTable from './components/SummaryTable';
 import PositionEditor from './components/PositionEditor';
 import OrgChart from './components/OrgChart';
 import OrgChartListView from './components/OrgChartListView';
+import AIAnalysis from './components/AIAnalysis';
+import { useAuth } from './auth';
+import StickyHeader from './components/StickyHeader';
 
 const calculateFinancials = (
   positionInput: { salary: number; rate: number; utilization: number; },
@@ -69,7 +74,21 @@ const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
+const SparklesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+    </svg>
+);
+
+const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+);
+
+
 const App: React.FC = () => {
+  const { isUnlocked } = useAuth();
   const [benefitsPercent, setBenefitsPercent] = useState(30);
   const [overheadPercent, setOverheadPercent] = useState(15);
   const [workWeekHours, setWorkWeekHours] = useState(35);
@@ -104,12 +123,17 @@ const App: React.FC = () => {
   const [chartView, setChartView] = useState<'tree' | 'list'>('tree');
   const [isDeleteAllConfirmOpen, setIsDeleteAllConfirmOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
   const [duplicateSource, setDuplicateSource] = useState<Position | null>(null);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showUnlockToast, setShowUnlockToast] = useState(false);
+  const [isStickyHeaderVisible, setIsStickyHeaderVisible] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   
-  const actionMenuRef = useRef<HTMLDivElement>(null);
   const orgChartRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   
   useEffect(() => {
     setPositions(currentPositions =>
@@ -120,18 +144,27 @@ const App: React.FC = () => {
     );
   }, [benefitsMultiplier, overheadMultiplier, annualBillableHours]);
 
-
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-        if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
-            setIsActionMenuOpen(false);
+    const handleScroll = () => {
+        if (headerRef.current) {
+            const { bottom } = headerRef.current.getBoundingClientRect();
+            setIsStickyHeaderVisible(window.scrollY > bottom);
         }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll);
     return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    if (showUnlockToast) {
+        const timer = setTimeout(() => {
+            setShowUnlockToast(false);
+        }, 5000); // Hide after 5 seconds
+        return () => clearTimeout(timer);
+    }
+  }, [showUnlockToast]);
 
   const addPosition = (positionInput: PositionInput) => {
     const financials = calculateFinancials(positionInput, benefitsMultiplier, overheadMultiplier, annualBillableHours);
@@ -220,12 +253,7 @@ const App: React.FC = () => {
     setDuplicateSource(null);
   };
 
-  const handleExport = (email: string): { link: string; csv: string } => {
-    // Simulate API call to Kit.com
-    console.log(`--- CAPTURING EMAIL ---`);
-    console.log(`Email: ${email}`);
-    console.log(`-----------------------`);
-
+  const handleExport = (): { link: string; csv: string } => {
     // Define headers for CSV, excluding margin and managerId
     const headers = ['Role', 'Salary', 'Total Salary', 'Overhead Cost', 'Rate', 'Utilization', 'Revenue', 'Profit'];
     const headerKeys: (keyof Position)[] = ['role', 'salary', 'totalSalary', 'overheadCost', 'rate', 'utilization', 'revenue', 'profit'];
@@ -298,6 +326,108 @@ const App: React.FC = () => {
     link.click();
   };
 
+  const handleExportClick = () => {
+    setIsActionMenuOpen(false);
+    if (isUnlocked) {
+        setIsExportModalOpen(true);
+    } else {
+        setIsUnlockModalOpen(true);
+    }
+  };
+
+  const handleRunAnalysis = async () => {
+    if (!isUnlocked) {
+        setIsUnlockModalOpen(true);
+        return;
+    }
+
+    setIsAnalyzing(true);
+    setAiAnalysis(null);
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+        
+        // Calculate direct reports for each manager
+        const positionsWithReportCount = positions.map(p => {
+            const reports = positions.filter(r => r.managerId === p.id);
+            return {
+                ...p,
+                directReports: reports.length
+            };
+        });
+
+        const dataForAnalysis = {
+            positions: positionsWithReportCount.map(({ id, managerId, ...rest }) => rest), // Omit IDs for cleaner analysis
+            settings: {
+                benefitsPercent,
+                overheadPercent,
+                workWeekHours,
+                annualBillableWeeks: 44,
+            }
+        };
+
+        const prompt = `
+            You are an expert business consultant specializing in organizational structure for service-based businesses.
+            Analyze the following organizational structure and financial data.
+            Your tone should be casual and direct. Get straight to the point.
+            Provide a concise analysis covering three key areas: Strengths, Potential Risks/Opportunities, and Key Observations.
+            
+            **Important Context & Rules:**
+            - This data represents a forward-looking plan or model, not necessarily the current state of the business. Utilization targets are aspirational goals.
+            - The 'benefitsPercent' setting creates a total salary multiplier to estimate the true cost of an employee (including benefits, payroll taxes, etc.). The 30% default is a common industry standard.
+            - The 'overheadPercent' accounts for operational costs (rent, software, etc.). The 15% default is a standard baseline but can be adjusted for leaner organizations.
+            - **Crucially, do not comment on the negative profit margins of C-suite or executive roles (like CEO, COO).** These positions are strategic and not expected to be billable. It is normal and acceptable for them to show a loss on paper; their value is in leading the company, not in billable work.
+            
+            **Guidelines for your analysis:**
+            - **Rule of 7:** Pay close attention to the number of direct reports for each manager ('directReports' property). A manager with fewer than 3-4 reports might suggest the team is top-heavy. A manager with more than 7-8 reports is likely over-extended and may become a bottleneck. Flag these as risks or opportunities.
+            - **Actionable Insights:** Focus on high-impact insights about profitability, team balance, and growth. For "Risks & Opportunities," suggest concrete actions.
+            - **Clarity:** Each bullet point should be a single, clear sentence.
+            - **Specificity:** Refer to specific roles or departments where relevant.
+
+            Here is the data:
+            ${JSON.stringify(dataForAnalysis, null, 2)}
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        strengths: {
+                            type: Type.ARRAY,
+                            description: "Positive aspects of the org structure, team balance, or financial health. 2-4 points.",
+                            items: { type: Type.STRING }
+                        },
+                        risks_opportunities: {
+                            type: Type.ARRAY,
+                            description: "Potential issues, bottlenecks, financial risks, or opportunities for improvement/growth. 2-4 points.",
+                            items: { type: Type.STRING }
+                        },
+                        key_observations: {
+                            type: Type.ARRAY,
+                            description: "Neutral, interesting, or noteworthy financial or structural observations. 2-4 points.",
+                            items: { type: Type.STRING }
+                        }
+                    },
+                    required: ['strengths', 'risks_opportunities', 'key_observations']
+                }
+            }
+        });
+        
+        const analysisResult = JSON.parse(response.text) as AIAnalysisResult;
+        setAiAnalysis(analysisResult);
+
+    } catch (error) {
+        console.error("AI analysis failed:", error);
+        // TODO: Show an error toast to the user
+    } finally {
+        setIsAnalyzing(false);
+    }
+};
+
   const tree = useMemo(() => {
     const buildTree = (items: Position[], parentId: string | null = null, depth = 0): TreeNode[] => {
       return items
@@ -325,15 +455,28 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen text-gray-200 p-4 sm:p-6 lg:p-8">
+      <AnimatePresence>
+        {isStickyHeaderVisible && (
+            <StickyHeader
+                isUnlocked={isUnlocked}
+                isActionMenuOpen={isActionMenuOpen}
+                setIsActionMenuOpen={setIsActionMenuOpen}
+                onExportClick={handleExportClick}
+                onLoadSampleData={loadSampleData}
+                onAddRootRole={handleAddRootRole}
+                onDeleteAll={() => setIsDeleteAllConfirmOpen(true)}
+                onSignInClick={() => setIsUnlockModalOpen(true)}
+            />
+        )}
+      </AnimatePresence>
       <div className="max-w-7xl mx-auto">
-        <header className="text-center" style={{ margin: '2rem 0 6rem 0' }}>
+        <header ref={headerRef} className="text-center" style={{ margin: '2rem 0 6rem 0' }}>
             <div className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
                 <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
             </div>
             <h1 className="font-bold text-white max-w-3xl mx-auto" style={{ fontSize: '3.35rem', lineHeight: '110%' }}>A smarter, free organizational structure chart maker – built with profitability in mind.</h1>
-            <p className="text-gray-400 mt-4 max-w-2xl mx-auto" style={{ fontSize: '1.15rem' }}>
-                {/* FIX: Replaced deprecated <strike> tag with <s> */}
-                Build your organizational structure chart for free and instantly see the financial impact of every role, and every version of your business. <s>Built with love</s> Shittily vibe-coded by{' '}
+            <p className="text-gray-300 mt-4 max-w-2xl mx-auto" style={{ fontSize: '1.15rem' }}>
+                Plan for your business' growth the smart way. Build your organizational structure chart for free and instantly see the financial impact of every role, and every version of your business. Built for fun by{' '}
                 <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">
                 jeffarchibald.ca
                 </a>
@@ -354,64 +497,6 @@ const App: React.FC = () => {
                   <button onClick={() => setChartView('tree')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'tree' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Tree</button>
                   <button onClick={() => setChartView('list')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'list' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>List</button>
                 </div>
-              </div>
-              <div className="relative" ref={actionMenuRef}>
-                <motion.button
-                  onClick={() => setIsActionMenuOpen(prev => !prev)}
-                  className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center shadow-soft-glow"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Actions
-                  <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
-                </motion.button>
-                <AnimatePresence>
-                    {isActionMenuOpen && (
-                        <motion.div
-                            className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-20"
-                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                            transition={{ duration: 0.15 }}
-                        >
-                            <div className="py-1" role="menu" aria-orientation="vertical">
-                                <button
-                                    onClick={() => { setIsExportModalOpen(true); setIsActionMenuOpen(false); }}
-                                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white"
-                                    role="menuitem"
-                                >
-                                    <ArrowUpTrayIcon className="w-4 h-4 mr-3 text-gray-400" />
-                                    Export & Share
-                                </button>
-                                <button
-                                    onClick={loadSampleData}
-                                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white"
-                                    role="menuitem"
-                                >
-                                    <ArrowPathIcon className="w-4 h-4 mr-3 text-gray-400" />
-                                    Load Sample Data
-                                </button>
-                                <button
-                                    onClick={handleAddRootRole}
-                                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white"
-                                    role="menuitem"
-                                >
-                                    <PlusIcon className="w-4 h-4 mr-3 text-gray-400" />
-                                    Add Role
-                                </button>
-                                <div className="border-t border-brand-border my-1"></div>
-                                <button
-                                    onClick={() => { setIsDeleteAllConfirmOpen(true); setIsActionMenuOpen(false); }}
-                                    className="w-full text-left flex items-center px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                                    role="menuitem"
-                                >
-                                    <TrashIcon className="w-4 h-4 mr-3" />
-                                    Delete All
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
               </div>
             </div>
             <div className="bg-brand-surface/50 p-4 rounded-lg border border-brand-border overflow-x-auto relative min-h-[200px]">
@@ -459,15 +544,15 @@ const App: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-semibold">Financial Breakdown</h2>
               <motion.button
-                onClick={() => setIsSettingsOpen(prev => !prev)}
-                className="bg-brand-surface hover:bg-gray-800/60 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center border border-brand-border"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsSettingsOpen(prev => !prev)}
+                  className="bg-brand-surface hover:bg-gray-800/60 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center border border-brand-border"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
               >
-                Settings
-                <motion.div animate={{ rotate: isSettingsOpen ? 180 : 0 }}>
-                  <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
-                </motion.div>
+                  Settings
+                  <motion.div animate={{ rotate: isSettingsOpen ? 180 : 0 }}>
+                      <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
+                  </motion.div>
               </motion.button>
             </div>
              <AnimatePresence>
@@ -483,7 +568,7 @@ const App: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
                       <div>
                         <label htmlFor="benefits-percent" className="block text-sm font-medium text-gray-300">Total Salary Multiplier</label>
-                        <p className="mt-1 text-xs text-gray-500">Accounts for benefits, taxes, etc.</p>
+                        <p className="mt-1 text-xs text-gray-400">Accounts for benefits, taxes, etc.</p>
                         <div className="mt-2 flex rounded-md shadow-sm">
                           <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-brand-border bg-gray-700 text-gray-300 sm:text-sm">
                             Salary +
@@ -502,7 +587,7 @@ const App: React.FC = () => {
                       </div>
                       <div>
                         <label htmlFor="overhead-percent" className="block text-sm font-medium text-gray-300">Overhead Cost Multiplier</label>
-                        <p className="mt-1 text-xs text-gray-500">Accounts for rent, software, etc.</p>
+                        <p className="mt-1 text-xs text-gray-400">Accounts for rent, software, etc.</p>
                         <div className="mt-2 flex rounded-md shadow-sm">
                           <input
                             type="number"
@@ -518,7 +603,7 @@ const App: React.FC = () => {
                       </div>
                       <div>
                         <label htmlFor="work-week-hours" className="block text-sm font-medium text-gray-300">Work Week (Hours)</label>
-                        <p className="mt-1 text-xs text-gray-500">Affects Revenue totals.</p>
+                        <p className="mt-1 text-xs text-gray-400">Affects Revenue totals.</p>
                         <div className="mt-2 flex rounded-md shadow-sm">
                           <input
                             type="number"
@@ -541,49 +626,68 @@ const App: React.FC = () => {
               onEdit={handleEditPosition}
               onDelete={deletePosition}
               onDuplicate={handleDuplicatePosition}
+              isUnlocked={isUnlocked}
+              onUnlockRequest={() => setIsUnlockModalOpen(true)}
+            />
+          </motion.div>
+          
+          <motion.div variants={itemVariants}>
+            <AIAnalysis
+                isUnlocked={isUnlocked}
+                onRunAnalysis={handleRunAnalysis}
+                analysisResult={aiAnalysis}
+                isAnalyzing={isAnalyzing}
+                onUnlockRequest={() => setIsUnlockModalOpen(true)}
             />
           </motion.div>
 
           <motion.div variants={itemVariants} className="pt-16 pb-8">
               <div className="max-w-3xl mx-auto text-left space-y-12">
+                  <h2 className="text-3xl font-bold mb-0 text-white text-center">About TeamLedger</h2>
                   <section>
-                      <h2 className="text-2xl font-semibold mb-4 text-white">Why use TeamLedger as an organizational structure chart maker?</h2>
-                      <p className="text-gray-400" style={{ fontSize: '1.15rem' }}>
+                      <h3 className="text-2xl font-semibold mb-4 text-white">Why use TeamLedger as an organizational structure chart maker?</h3>
+                      <p className="text-gray-300" style={{ fontSize: '1.15rem' }}>
                           Most org chart tools stop at boxes and lines. This one goes further, tying each role to salary, utilization, and overhead so you can see how your structure affects profitability.
                       </p>
-                      <p className="text-gray-400 mt-4" style={{ fontSize: '1.15rem' }}>
+                      <p className="text-gray-300 mt-4" style={{ fontSize: '1.15rem' }}>
                           Whether you’re mapping a five-person startup or a fifty-person agency, this organizational structure chart maker gives you the full picture: who reports to whom, what each role costs, and how changes ripple through your financial model.
                       </p>
                   </section>
                   
                   <section>
-                      <h2 className="text-2xl font-semibold mb-4 text-white">What Does TeamLedger Do?</h2>
-                      <p className="text-gray-400" style={{ fontSize: '1.15rem' }}>
+                      <h3 className="text-2xl font-semibold mb-4 text-white">What Does TeamLedger Do?</h3>
+                      <p className="text-gray-300" style={{ fontSize: '1.15rem' }}>
                           With this free organizational structure chart maker, you can:
                       </p>
-                      <ul className="list-disc list-inside text-gray-400 mt-4 space-y-2" style={{ fontSize: '1.15rem' }}>
+                      <ul className="list-disc list-inside text-gray-300 mt-4 space-y-2" style={{ fontSize: '1.15rem' }}>
                           <li>Build your team structure visually. Create, update, delete, and organize roles into clear hierarchies.</li>
                           <li>Attach financial data. Add salaries, billable rates, and capacity to every seat. Real costs are automatically calculated.</li>
                           <li>Plan future hires. Model “what-if” scenarios before you make your next hire.</li>
                       </ul>
-                      <p className="text-gray-400 mt-4" style={{ fontSize: '1.15rem' }}>
+                      <p className="text-gray-300 mt-4" style={{ fontSize: '1.15rem' }}>
                           It’s not just an organizational structure chart maker — it’s a planning tool for smarter growth.
                       </p>
                   </section>
 
                   <section>
-                      <h2 className="text-2xl font-semibold mb-4 text-white">Who is this organizational structure chart maker for?</h2>
-                      <p className="text-gray-400" style={{ fontSize: '1.15rem' }}>
+                      <h3 className="text-2xl font-semibold mb-4 text-white">Who is this organizational structure chart maker for?</h3>
+                      <p className="text-gray-300" style={{ fontSize: '1.15rem' }}>
                           TeamLedger is great for:
                       </p>
-                      <ul className="list-disc list-inside text-gray-400 mt-4 space-y-2" style={{ fontSize: '1.15rem' }}>
+                      <ul className="list-disc list-inside text-gray-300 mt-4 space-y-2" style={{ fontSize: '1.15rem' }}>
                           <li>Agency owners who want to balance creative growth with profit.</li>
                           <li>Any service businesses who bill by the hour, or by fixed price.</li>
                           <li>Startup founders mapping their first org structure.</li>
                           <li>Operations leaders looking for improved department fiscal understanding.</li>
                       </ul>
-                      <p className="text-gray-400 mt-4" style={{ fontSize: '1.15rem' }}>
+                      <p className="text-gray-300 mt-4" style={{ fontSize: '1.15rem' }}>
                           If you care about both structure and sustainability, this tool was built for you.
+                      </p>
+                  </section>
+                  <section>
+                      <h3 className="text-2xl font-semibold mb-4 text-white">Who built TeamLedger?</h3>
+                      <p className="text-gray-300" style={{ fontSize: '1.15rem' }}>
+                          TeamLedger is a fun project by me, Jeff Archibald. I'm an <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">agency consultant</a> who primarily works with creative firms and service businesses. I used a janky spreadsheet in the past to do this type of work, so I figured I'd try building a nicer web version of it. Tada!
                       </p>
                   </section>
               </div>
@@ -619,6 +723,20 @@ const App: React.FC = () => {
               isPngExportAvailable={chartView === 'tree'}
            />
         )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isUnlockModalOpen && (
+            <UnlockModal 
+                onClose={() => setIsUnlockModalOpen(false)}
+                onUnlockSuccess={() => {
+                    setIsUnlockModalOpen(false);
+                    setShowUnlockToast(true);
+                }}
+            />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showUnlockToast && <SuccessToast />}
       </AnimatePresence>
     </div>
   );
@@ -665,44 +783,155 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onClose, onConf
     )
 }
 
-interface ExportModalProps {
+interface UnlockModalProps {
     onClose: () => void;
-    onConfirm: (email: string) => { link: string; csv: string };
-    onDownloadPng: () => Promise<void>;
-    isPngExportAvailable: boolean;
+    onUnlockSuccess: () => void;
 }
 
-const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloadPng, isPngExportAvailable }) => {
+const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) => {
+    const { unlockApp } = useAuth();
     const [email, setEmail] = useState('');
-    const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
-    const [shareableLink, setShareableLink] = useState('');
-    const [csvData, setCsvData] = useState('');
-    const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
-    const [isGeneratingPng, setIsGeneratingPng] = useState(false);
+    const [status, setStatus] = useState<'idle' | 'submitting'>('idle');
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (status !== 'idle' || !email) return;
+        setStatus('submitting');
+        await unlockApp(email);
+        onUnlockSuccess();
+    };
+    
     const backdropVariants = {
         hidden: { opacity: 0 },
         visible: { opacity: 1 }
     };
-    // FIX: Add Variants type to fix framer-motion type error
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
         exit: { opacity: 0, y: 20, scale: 0.95 }
     };
-    
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (status !== 'idle' || !email) return;
 
-        setStatus('submitting');
-        
-        setTimeout(() => {
-            const { link, csv } = onConfirm(email);
-            setShareableLink(link);
-            setCsvData(csv);
-            setStatus('success');
-        }, 800);
+    return (
+        <motion.div 
+            className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            onClick={onClose}
+        >
+          <motion.div 
+            className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-md"
+            variants={modalVariants}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <form onSubmit={handleSubmit}>
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-white">Unlock Full Financials, Exporting, and AI Insights.</h3>
+                <p className="text-gray-400 mt-2">See the big picture and act on it. Enter your email to:</p>
+                
+                <ul className="space-y-3 mt-4 text-gray-300">
+                    <li className="flex items-start">
+                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
+                        <span>Unlock the complete financial breakdown</span>
+                    </li>
+                    <li className="flex items-start">
+                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
+                        <span>Enable sharing & exporting</span>
+                    </li>
+                    <li className="flex items-start">
+                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
+                        <span>Get AI insights and SWOT on your org structure so you can operate</span>
+                    </li>
+                     <li className="flex items-start">
+                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
+                        <span>Be notified of new feature releases</span>
+                    </li>
+                </ul>
+                
+                <p className="text-gray-400 mt-4 text-sm">No fees, no spam, and you can unsubscribe at any time.</p>
+
+                <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    required
+                    className="mt-4 w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
+                />
+              </div>
+              <div className="bg-gray-900/50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-start sm:items-center sm:space-x-4 rounded-b-lg">
+                <motion.button 
+                    type="submit" 
+                    disabled={status === 'submitting'} 
+                    whileHover={{ scale: 1.05 }} 
+                    whileTap={{ scale: 0.95 }} 
+                    className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                    {status === 'submitting' ? 'Unlocking...' : 'Unlock Now'}
+                    <SparklesIcon className="w-4 h-4 ml-2" />
+                </motion.button>
+                <motion.button 
+                    type="button" 
+                    whileHover={{ y: -2 }} 
+                    whileTap={{ y: 0 }} 
+                    onClick={onClose} 
+                    className="text-gray-400 hover:text-white text-sm transition-colors font-semibold py-2 sm:py-0"
+                >
+                    Cancel
+                </motion.button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+    );
+};
+
+const SuccessToast: React.FC = () => {
+    return (
+        <motion.div
+            className="fixed bottom-5 right-5 bg-green-600/90 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center z-[100] backdrop-blur-sm border border-green-500"
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+        >
+            <CheckCircleIcon className="w-6 h-6 mr-3 text-green-200" />
+            <div>
+                <p className="font-bold">App Unlocked!</p>
+                <p className="text-sm text-green-100">You now have access to all app features.</p>
+            </div>
+        </motion.div>
+    );
+};
+
+interface ExportModalProps {
+    onClose: () => void;
+    onConfirm: () => { link: string; csv: string };
+    onDownloadPng: () => Promise<void>;
+    isPngExportAvailable: boolean;
+}
+
+const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloadPng, isPngExportAvailable }) => {
+    const [shareableLink, setShareableLink] = useState('');
+    const [csvData, setCsvData] = useState('');
+    const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+    const [isGeneratingPng, setIsGeneratingPng] = useState(false);
+
+    useEffect(() => {
+        const { link, csv } = onConfirm();
+        setShareableLink(link);
+        setCsvData(csv);
+    }, [onConfirm]);
+
+    const backdropVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1 }
+    };
+    const modalVariants: Variants = {
+        hidden: { opacity: 0, y: 30, scale: 0.95 },
+        visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
+        exit: { opacity: 0, y: 20, scale: 0.95 }
     };
 
     const handleCopyLink = () => {
@@ -750,76 +979,45 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloa
             variants={modalVariants}
           >
             <div className="p-6">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={status}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        {status === 'success' ? (
-                            <div className="text-left">
-                                <h3 className="text-xl font-bold text-white">Success!</h3>
-                                <p className="text-gray-400 mt-2 mb-4">Here are your shareable link and export options.</p>
-                                
-                                <label className="block text-sm font-medium text-gray-300 mb-1">Shareable Link</label>
-                                <div className="flex space-x-2">
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        value={shareableLink}
-                                        className="w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
-                                    />
-                                    <motion.button 
-                                        onClick={handleCopyLink} 
-                                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} 
-                                        className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-                                    >
-                                        {copyStatus === 'copied' ? 'Copied!' : 'Copy'}
-                                    </motion.button>
-                                </div>
+                <div className="text-left">
+                    <h3 className="text-xl font-bold text-white">Success!</h3>
+                    <p className="text-gray-400 mt-2 mb-4">Here are your shareable link and export options.</p>
+                    
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Shareable Link</label>
+                    <div className="flex space-x-2">
+                        <input
+                            type="text"
+                            readOnly
+                            value={shareableLink}
+                            className="w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
+                        />
+                        <motion.button 
+                            onClick={handleCopyLink} 
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} 
+                            className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                        >
+                            {copyStatus === 'copied' ? 'Copied!' : 'Copy'}
+                        </motion.button>
+                    </div>
 
-                                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {isPngExportAvailable && (
-                                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadPng} disabled={isGeneratingPng} className="w-full flex justify-center items-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                            <PhotoIcon className="w-5 h-5 mr-2" />
-                                            {isGeneratingPng ? 'Generating...' : 'Download PNG'}
-                                        </motion.button>
-                                    )}
-                                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadCsv} className="w-full flex justify-center items-center bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                                        <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
-                                        Download CSV
-                                    </motion.button>
-                                </div>
-                                 <div className="mt-3">
-                                     <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                                        Close
-                                    </motion.button>
-                                 </div>
-                            </div>
-                        ) : (
-                             <form onSubmit={handleSubmit}>
-                                <h3 className="text-xl font-bold text-white">Export & Share</h3>
-                                <p className="text-gray-400 mt-2">Enter your email to generate a shareable link to your chart and export your data.</p>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="your@email.com"
-                                    required
-                                    className="mt-4 w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
-                                />
-                                <div className="mt-6 flex justify-end space-x-3">
-                                    <motion.button type="button" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancel</motion.button>
-                                    <motion.button type="submit" disabled={status === 'submitting'} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                        {status === 'submitting' ? 'Generating...' : 'Get Link'}
-                                    </motion.button>
-                                </div>
-                            </form>
+                    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {isPngExportAvailable && (
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadPng} disabled={isGeneratingPng} className="w-full flex justify-center items-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <PhotoIcon className="w-5 h-5 mr-2" />
+                                {isGeneratingPng ? 'Generating...' : 'Download PNG'}
+                            </motion.button>
                         )}
-                    </motion.div>
-                </AnimatePresence>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadCsv} className="w-full flex justify-center items-center bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                            <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
+                            Download CSV
+                        </motion.button>
+                    </div>
+                      <div className="mt-3">
+                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                            Close
+                        </motion.button>
+                      </div>
+                </div>
             </div>
           </motion.div>
         </motion.div>
