@@ -1,4 +1,5 @@
 
+
 // FIX: Removed non-existent 'useAistudio' from React import and combined the React imports.
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 // FIX: import Variants to fix framer-motion type errors
@@ -380,6 +381,7 @@ const App: React.FC = () => {
             
             **Guidelines for your analysis:**
             - **Rule of 7:** Pay close attention to the number of direct reports for each manager ('directReports' property). A manager with fewer than 3-4 reports might suggest the team is top-heavy. A manager with more than 7-8 reports is likely over-extended and may become a bottleneck. Flag these as risks or opportunities.
+            - **Manager Utilization:** A manager with more than 2 direct reports and a high utilization target (e.g., over 50-60%) is a major risk. Their management duties will likely conflict with their billable work, leading to burnout or underperformance in one or both areas. Flag this as a significant risk.
             - **Actionable Insights:** Focus on high-impact insights about profitability, team balance, and growth. For "Risks & Opportunities," suggest concrete actions.
             - **Clarity:** Each bullet point should be a single, clear sentence.
             - **Specificity:** Refer to specific roles or departments where relevant.

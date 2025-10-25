@@ -37,6 +37,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // `process.env.NODE_ENV` is a standard variable that is 'development'
     // when you're testing locally and 'production' on a live site.
 
+    /*
+    // TODO: Uncomment this block to re-enable FormSpree for production.
     if (process.env.NODE_ENV === 'production') {
       // --- PRODUCTION LOGIC ---
       // This code will ONLY run on your live website.
@@ -71,6 +73,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log(`In production, this would be sent to your Formspree endpoint.`);
       await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
     }
+    */
+    
+    // --- DEVELOPMENT/DEMO LOGIC ---
+    // This code will run on both local machine and production.
+    // To enable Formspree on production, comment this block out and uncomment the one above.
+    console.log(`--- SIMULATING EMAIL CAPTURE ---`);
+    console.log(`Email: ${email}`);
+    console.log(`In a full production setup, this would be sent to a service like Formspree.`);
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+
 
     // After the appropriate action is taken, unlock the app.
     setIsUnlocked(true);
