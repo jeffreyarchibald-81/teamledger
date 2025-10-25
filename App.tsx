@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+// FIX: import Variants to fix framer-motion type errors
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { Position, PositionInput, PositionUpdate, TreeNode } from './types';
@@ -8,8 +9,6 @@ import SummaryTable from './components/SummaryTable';
 import PositionEditor from './components/PositionEditor';
 import OrgChart from './components/OrgChart';
 import OrgChartListView from './components/OrgChartListView';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import LoginModal from './components/LoginModal';
 
 const calculateFinancials = (
   positionInput: { salary: number; rate: number; utilization: number; },
@@ -64,7 +63,7 @@ const PhotoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
-const AppContent: React.FC = () => {
+const App: React.FC = () => {
   const [benefitsPercent, setBenefitsPercent] = useState(30);
   const [overheadPercent, setOverheadPercent] = useState(15);
   const [workWeekHours, setWorkWeekHours] = useState(35);
@@ -105,9 +104,6 @@ const AppContent: React.FC = () => {
   
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const orgChartRef = useRef<HTMLDivElement>(null);
-  
-  const { isLoggedIn, userEmail, logout } = useAuth();
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   
   useEffect(() => {
     setPositions(currentPositions =>
@@ -324,46 +320,19 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen text-gray-200 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="relative" style={{ marginBottom: '6rem' }}>
-            <header className="absolute top-0 left-0 right-0 flex justify-between items-center z-30">
-                <div className="font-parkinsans" style={{ fontSize: '1.5rem' }}>
-                    <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
-                </div>
-                <div className="flex items-center space-x-4">
-                    {isLoggedIn ? (
-                        <>
-                            <span className="text-gray-300 hidden sm:inline">{userEmail}</span>
-                            <motion.button
-                                onClick={logout}
-                                className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg transition-colors text-sm"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                            >
-                                Logout
-                            </motion.button>
-                        </>
-                    ) : (
-                        <motion.button
-                            onClick={() => setIsLoginModalOpen(true)}
-                            className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-3 rounded-lg transition-colors text-sm"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Login
-                        </motion.button>
-                    )}
-                </div>
-            </header>
-            <div className="text-center" style={{ paddingTop: '6.5rem' }}>
-                <h1 className="font-bold text-white max-w-3xl mx-auto" style={{ fontSize: '3.35rem', lineHeight: '110%' }}>A smarter, free organizational structure chart maker – built with profitability in mind.</h1>
-                <p className="text-gray-400 mt-4 max-w-2xl mx-auto" style={{ fontSize: '1.15rem' }}>
-                    Build your organizational structure chart for free and instantly see the financial impact of every role, and every version of your business. <s>Built with love</s> Shittily vibe-coded by{' '}
-                    <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">
-                    jeffarchibald.ca
-                    </a>
-                </p>
+        <header className="text-center" style={{ margin: '2rem 0 6rem 0' }}>
+            <div className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
+                <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
             </div>
-        </div>
+            <h1 className="font-bold text-white max-w-3xl mx-auto" style={{ fontSize: '3.35rem', lineHeight: '110%' }}>A smarter, free organizational structure chart maker – built with profitability in mind.</h1>
+            <p className="text-gray-400 mt-4 max-w-2xl mx-auto" style={{ fontSize: '1.15rem' }}>
+                {/* FIX: Replaced deprecated <strike> tag with <s> */}
+                Build your organizational structure chart for free and instantly see the financial impact of every role, and every version of your business. <s>Built with love</s> Shittily vibe-coded by{' '}
+                <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">
+                jeffarchibald.ca
+                </a>
+            </p>
+        </header>
 
         <motion.main 
           className="space-y-12"
@@ -639,13 +608,6 @@ const AppContent: React.FC = () => {
            />
         )}
       </AnimatePresence>
-      <AnimatePresence>
-        {isLoginModalOpen && (
-           <LoginModal
-              onClose={() => setIsLoginModalOpen(false)}
-           />
-        )}
-      </AnimatePresence>
     </div>
   );
 };
@@ -660,6 +622,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onClose, onConf
         hidden: { opacity: 0 },
         visible: { opacity: 1 }
     };
+    // FIX: Add Variants type to fix framer-motion type error
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
@@ -709,6 +672,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloa
         hidden: { opacity: 0 },
         visible: { opacity: 1 }
     };
+    // FIX: Add Variants type to fix framer-motion type error
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
@@ -850,10 +814,5 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloa
     )
 }
 
-const App: React.FC = () => (
-  <AuthProvider>
-    <AppContent />
-  </AuthProvider>
-);
 
 export default App;
