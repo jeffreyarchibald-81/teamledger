@@ -1,5 +1,3 @@
-
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Position, PositionUpdate } from '../types';
@@ -127,7 +125,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
   };
 
   const menuItems = (pos: Position) => [
-      { label: 'Add Subordinate', icon: UserPlusIcon, action: () => onAddSubordinate(pos.id) },
+      { label: 'Add Report', icon: UserPlusIcon, action: () => onAddSubordinate(pos.id) },
       { label: 'Edit', icon: PencilIcon, action: () => onEdit(pos) },
       { label: 'Duplicate', icon: DocumentDuplicateIcon, action: () => onDuplicate(pos) },
       { label: 'Delete', icon: TrashIcon, action: () => onDelete(pos.id), isDestructive: true },
@@ -201,17 +199,41 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
           ))}
           </AnimatePresence>
         </motion.tbody>
-        <tfoot className="font-bold text-white bg-black">
+        <tfoot className="font-bold text-white bg-black/50">
             <tr>
-                <td className="px-6 py-4">Totals</td>
-                <td className="px-6 py-4">{formatCurrency(totals.salary)}</td>
-                <td className="px-6 py-4">{formatCurrency(totals.totalSalary)}</td>
-                <td className="px-6 py-4">{formatCurrency(totals.overheadCost)}</td>
-                <td className="px-6 py-4 text-gray-500">-</td>
-                <td className="px-6 py-4">{formatPercent(totals.avgUtilization)}</td>
-                <td className="px-6 py-4">{formatCurrency(totals.revenue)}</td>
-                <td className={`px-6 py-4 ${totals.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totals.profit)}</td>
-                <td className={`px-6 py-4 ${totals.totalMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(totals.totalMargin)}</td>
+                <td className="px-6 py-4 align-bottom">Totals</td>
+                <td className="px-6 py-4">
+                    <div className="text-xs font-normal text-gray-400 mb-1">Salary</div>
+                    <div>{formatCurrency(totals.salary)}</div>
+                </td>
+                <td className="px-6 py-4">
+                    <div className="text-xs font-normal text-gray-400 mb-1">Total Salary</div>
+                    <div>{formatCurrency(totals.totalSalary)}</div>
+                </td>
+                <td className="px-6 py-4">
+                    <div className="text-xs font-normal text-gray-400 mb-1">Overhead Cost</div>
+                    <div>{formatCurrency(totals.overheadCost)}</div>
+                </td>
+                <td className="px-6 py-4">
+                    <div className="text-xs font-normal text-gray-400 mb-1">Rate</div>
+                    <div className="text-gray-500">-</div>
+                </td>
+                <td className="px-6 py-4">
+                    <div className="text-xs font-normal text-gray-400 mb-1">Utilization</div>
+                    <div>{formatPercent(totals.avgUtilization)}</div>
+                </td>
+                <td className="px-6 py-4">
+                    <div className="text-xs font-normal text-gray-400 mb-1">Revenue</div>
+                    <div>{formatCurrency(totals.revenue)}</div>
+                </td>
+                <td className="px-6 py-4">
+                    <div className="text-xs font-normal text-gray-400 mb-1">Profit</div>
+                    <div className={`${totals.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totals.profit)}</div>
+                </td>
+                <td className="px-6 py-4">
+                    <div className="text-xs font-normal text-gray-400 mb-1">Margin</div>
+                    <div className={`${totals.totalMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(totals.totalMargin)}</div>
+                </td>
                 <td className="px-6 py-4"></td>
             </tr>
         </tfoot>

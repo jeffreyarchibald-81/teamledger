@@ -63,6 +63,12 @@ const PhotoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
+const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
+);
+
 const App: React.FC = () => {
   const [benefitsPercent, setBenefitsPercent] = useState(30);
   const [overheadPercent, setOverheadPercent] = useState(15);
@@ -343,7 +349,7 @@ const App: React.FC = () => {
           <motion.div variants={itemVariants}>
             <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
               <div className="flex items-center space-x-4">
-                <h2 className="text-2xl font-semibold">Organization Structure</h2>
+                <h2 className="text-2xl font-semibold">Organizational Structure</h2>
                 <div className="flex items-center rounded-lg bg-brand-surface p-1 border border-brand-border">
                   <button onClick={() => setChartView('tree')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'tree' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Tree</button>
                   <button onClick={() => setChartView('list')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'list' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>List</button>
@@ -393,6 +399,15 @@ const App: React.FC = () => {
                                     <PlusIcon className="w-4 h-4 mr-3 text-gray-400" />
                                     Add Role
                                 </button>
+                                <div className="border-t border-brand-border my-1"></div>
+                                <button
+                                    onClick={() => { setIsDeleteAllConfirmOpen(true); setIsActionMenuOpen(false); }}
+                                    className="w-full text-left flex items-center px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                    role="menuitem"
+                                >
+                                    <TrashIcon className="w-4 h-4 mr-3" />
+                                    Delete All
+                                </button>
                             </div>
                         </motion.div>
                     )}
@@ -410,9 +425,6 @@ const App: React.FC = () => {
                   >
                   {tree.length > 0 ? (
                     <>
-                    <button onClick={() => setIsDeleteAllConfirmOpen(true)} className="absolute top-3 right-3 text-xs text-gray-500 hover:text-red-400 hover:underline transition-colors z-10">
-                      Delete All
-                    </button>
                     {chartView === 'tree' ? (
                       <OrgChart 
                         tree={tree}
@@ -445,7 +457,7 @@ const App: React.FC = () => {
           
           <motion.div variants={itemVariants}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-semibold">Financial Summary</h2>
+              <h2 className="text-2xl font-semibold">Financial Breakdown</h2>
               <motion.button
                 onClick={() => setIsSettingsOpen(prev => !prev)}
                 className="bg-brand-surface hover:bg-gray-800/60 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center border border-brand-border"

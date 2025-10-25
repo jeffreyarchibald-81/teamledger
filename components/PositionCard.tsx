@@ -19,21 +19,21 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onAddSubordinate,
 
   return (
     <motion.div 
-        className="card-gradient p-3 rounded-lg shadow-soft-glow transition-shadow border border-brand-border"
-        whileHover={{ scale: 1.05, y: -5, boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.4), 0 0 40px 0 rgba(34, 211, 238, 0.1)' }}
+        className="card-gradient p-2 rounded-lg shadow-soft-glow transition-shadow border border-brand-border"
+        whileHover={{ scale: 1.03, y: -4, boxShadow: '0 15px 30px -15px rgba(0, 0, 0, 0.3), 0 0 25px 0 rgba(34, 211, 238, 0.08)' }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <div className="flex justify-between items-start">
         <div className="flex-grow">
-          <h3 className="text-base font-bold text-white text-left">{position.role}</h3>
-          <div className="text-xs text-gray-400 mt-2 text-left space-y-1">
+          <h3 className="text-sm font-bold text-white text-left">{position.role}</h3>
+          <div className="text-xs text-gray-400 mt-1 text-left space-y-1">
             <p>Salary: <span className="font-semibold text-gray-300">{formatCurrency(position.salary)}</span></p>
             <p>Profit: <span className={`font-semibold ${marginColor}`}>{formatCurrency(position.profit)}</span></p>
             <p>Margin: <span className={`font-semibold ${marginColor}`}>{position.margin.toFixed(0)}%</span></p>
           </div>
         </div>
         <div className="flex flex-col space-y-1 ml-2">
-            <button onClick={onAddSubordinate} title="Add Subordinate" className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
+            <button onClick={onAddSubordinate} title="Add Report" className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
                 <UserPlusIcon className="w-4 h-4 text-gray-300" />
             </button>
             <button onClick={onEdit} title="Edit Position" className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
