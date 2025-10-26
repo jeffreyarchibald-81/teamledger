@@ -144,7 +144,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
   ];
 
   return (
-    <div className="overflow-x-auto bg-brand-surface rounded-lg shadow-soft-glow border border-brand-border">
+    <div className="overflow-x-auto bg-brand-surface rounded-lg shadow-soft-glow border border-brand-border relative">
       <table className="min-w-full text-sm text-left text-gray-300">
         <thead className="text-xs text-gray-400 uppercase bg-black">
           <tr>
@@ -251,8 +251,8 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
                 </tr>
             </tfoot>
         ) : (
-            <tfoot className="relative">
-                <tr className="blur-md select-none pointer-events-none font-bold text-white bg-black/50">
+            <tfoot className="font-bold text-white bg-black/50">
+                <tr className="blur-md select-none pointer-events-none">
                     <td className="px-6 py-4 align-bottom">Totals</td>
                     <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Salary</div><div>$1,800,000</div></td>
                     <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Total Salary</div><div>$2,340,000</div></td>
@@ -264,22 +264,22 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
                     <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Margin</div><div className="text-green-400">24%</div></td>
                     <td className="px-6 py-4"></td>
                 </tr>
-                <tr>
-                    <td colSpan={10} className="absolute inset-0 flex items-center justify-center p-0">
-                        <motion.button
-                            onClick={onUnlockRequest}
-                            className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center shadow-soft-glow-lg text-center"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            <SparklesIcon className="w-5 h-5 mr-2 flex-shrink-0" />
-                            <span>Unlock Full Financials, Exporting & AI Insights</span>
-                        </motion.button>
-                    </td>
-                </tr>
             </tfoot>
         )}
       </table>
+      {!isUnlocked && (
+        <div className="absolute inset-x-0 bottom-0 h-24 flex items-center justify-center p-4">
+            <motion.button
+                onClick={onUnlockRequest}
+                className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center shadow-soft-glow-lg text-center"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+            >
+                <SparklesIcon className="w-5 h-5 mr-2 flex-shrink-0" />
+                <span className="text-center">Unlock Full Financials, Exporting & AI Insights</span>
+            </motion.button>
+        </div>
+      )}
     </div>
   );
 };
