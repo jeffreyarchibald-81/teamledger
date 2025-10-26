@@ -264,17 +264,19 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
                     <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Margin</div><div className="text-green-400">24%</div></td>
                     <td className="px-6 py-4"></td>
                 </tr>
-                <td colSpan={10} className="absolute inset-0 flex items-center justify-center p-0">
-                    <motion.button 
-                        onClick={onUnlockRequest}
-                        className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center shadow-soft-glow-lg"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        <SparklesIcon className="w-5 h-5 mr-2" />
-                        Unlock Full Financials, Exporting & AI Insights
-                    </motion.button>
-                </td>
+                <tr>
+                    <td colSpan={10} className="absolute inset-0 flex items-center justify-center p-0">
+                        <motion.button
+                            onClick={onUnlockRequest}
+                            className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center shadow-soft-glow-lg text-center"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <SparklesIcon className="w-5 h-5 mr-2 flex-shrink-0" />
+                            <span>Unlock Full Financials, Exporting & AI Insights</span>
+                        </motion.button>
+                    </td>
+                </tr>
             </tfoot>
         )}
       </table>
