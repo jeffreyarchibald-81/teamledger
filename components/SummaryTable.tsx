@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Position, PositionUpdate } from '../types';
@@ -133,7 +134,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
             />
         );
     }
-    return <div onClick={() => handleEdit(pos, field)} className="cursor-pointer h-full w-full border-b border-dashed border-transparent hover:border-brand-accent">{displayValue}</div>;
+    return <div onClick={() => handleEdit(pos, field)} className="cursor-pointer h-full w-full border-b border-dashed border-brand-accent/40 hover:border-white transition-colors duration-200">{displayValue}</div>;
   };
 
   const menuItems = (pos: Position) => [

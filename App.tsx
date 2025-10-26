@@ -433,12 +433,9 @@ const App: React.FC = () => {
             <div className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
                 <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
             </div>
-            <h1 className="font-bold text-white max-w-4xl mx-auto" style={{ fontSize: '3.35rem', lineHeight: '110%' }}>Chart your path to profitability with TeamLedger, the AI-powered organizational structure chart maker for growing teams.</h1>
+            <h1 className="font-bold text-white max-w-4xl mx-auto" style={{ fontSize: '3.35rem', lineHeight: '110%' }}>A smarter organizational structure chart maker – so you can grow your business with confidence.</h1>
             <p className="text-gray-300 mt-4 max-w-3xl mx-auto" style={{ fontSize: '1.15rem' }}>
-                Go beyond simple boxes and lines, and plan your growth with data, not guesswork. TeamLedger lets you model your team structure, instantly see the financial impact of every role, and provides AI analysis to find hidden risks, opportunities, and more. Built for fun by{' '}
-                <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">
-                jeffarchibald.ca
-                </a>
+                Go beyond simple boxes and lines, and plan your growth with data, not guesswork. TeamLedger helps you model your current or future team structure, instantly see the financial impact of every role and version of your business, and provides custom AI analysis to find hidden risks, opportunities, and more.
             </p>
         </header>
 
@@ -809,7 +806,7 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
                     </li>
                     <li className="flex items-start">
                         <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
-                        <span>Get AI insights and SWOT on your org structure so you can operate</span>
+                        <span>Get custom AI insights and SWOT on your org structure so you can operate confidently</span>
                     </li>
                      <li className="flex items-start">
                         <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
