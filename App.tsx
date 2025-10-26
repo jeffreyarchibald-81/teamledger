@@ -433,9 +433,9 @@ const App: React.FC = () => {
             <div className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
                 <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
             </div>
-            <h1 className="font-bold text-white max-w-3xl mx-auto" style={{ fontSize: '3.35rem', lineHeight: '110%' }}>A smarter, free organizational structure chart maker – built with profitability in mind.</h1>
-            <p className="text-gray-300 mt-4 max-w-2xl mx-auto" style={{ fontSize: '1.15rem' }}>
-                Plan for your business' growth the smart way. Build your organizational structure chart for free and instantly see the financial impact of every role, and every version of your business. Built for fun by{' '}
+            <h1 className="font-bold text-white max-w-4xl mx-auto" style={{ fontSize: '3.35rem', lineHeight: '110%' }}>Chart your path to profitability with TeamLedger, the AI-powered organizational structure chart maker for growing teams.</h1>
+            <p className="text-gray-300 mt-4 max-w-3xl mx-auto" style={{ fontSize: '1.15rem' }}>
+                Go beyond simple boxes and lines, and plan your growth with data, not guesswork. TeamLedger lets you model your team structure, instantly see the financial impact of every role, and provides AI analysis to find hidden risks, opportunities, and more. Built for fun by{' '}
                 <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">
                 jeffarchibald.ca
                 </a>
