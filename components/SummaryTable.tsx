@@ -181,6 +181,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
                 onBlur={handleSave}
                 onKeyDown={handleKeyDown}
                 autoFocus
+                aria-label={`Edit ${field} for ${pos.role}`}
                 className="w-full bg-brand-dark border border-brand-accent rounded px-2 py-1 -m-2"
             />
         );
@@ -223,22 +224,32 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
               <td className={`px-4 py-4 font-semibold ${pos.margin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(pos.margin)}</td>
               <td className="px-4 py-4 text-center">
                 <div className="relative inline-block text-left">
-                    <button onClick={() => setActiveMenu(activeMenu === pos.id ? null : pos.id)} className="p-2 rounded-full hover:bg-gray-700 transition-colors">
+                    <button 
+                        id={`actions-menu-button-${pos.id}`}
+                        aria-haspopup="true"
+                        aria-expanded={activeMenu === pos.id}
+                        aria-controls={`actions-menu-${pos.id}`}
+                        aria-label={`Actions for ${pos.role}`}
+                        onClick={() => setActiveMenu(activeMenu === pos.id ? null : pos.id)} 
+                        className="p-2 rounded-full hover:bg-gray-700 transition-colors">
                         <EllipsisVerticalIcon className="w-5 h-5" />
                     </button>
                      <AnimatePresence>
                         {activeMenu === pos.id && (
                             <motion.div 
                                 ref={menuRef} 
+                                id={`actions-menu-${pos.id}`}
+                                role="menu"
+                                aria-labelledby={`actions-menu-button-${pos.id}`}
                                 className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-10"
                                 initial={{ opacity: 0, scale: 0.95, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: -10 }} transition={{ duration: 0.15 }}
                             >
-                                <div className="py-1" role="menu" aria-orientation="vertical">
+                                <div className="py-1">
                                     {menuItems(pos).map(item => (
                                         <button key={item.label} onClick={() => { item.action(); setActiveMenu(null); }}
-                                            className={`w-full text-left flex items-center px-4 py-2 text-sm ${item.isDestructive ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}`}
                                             role="menuitem"
+                                            className={`w-full text-left flex items-center px-4 py-2 text-sm ${item.isDestructive ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}`}
                                         >
                                             <item.icon className={`w-4 h-4 mr-3 ${item.isDestructive ? '' : 'text-gray-400'}`} />
                                             {item.label}
@@ -273,7 +284,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
         ) : (
             // A blurred, non-interactive version of the totals is shown to non-unlocked users.
             <tfoot className="font-bold text-white bg-black/50">
-                <tr className="blur-md select-none pointer-events-none">
+                <tr className="blur-md select-none pointer-events-none" aria-hidden="true">
                     <td className="px-4 py-4 align-bottom">Totals</td>
                     <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Salary</div><div>$1,800,000</div></td>
                     <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Total Salary</div><div>$2,340,000</div></td>
@@ -293,7 +304,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
         <div className="absolute inset-x-0 bottom-0 h-20 flex items-center justify-center p-4">
             <motion.button
                 onClick={onUnlockRequest}
-                className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center shadow-soft-glow-lg text-center"
+                className="bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center shadow-soft-glow-lg text-center"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
             >

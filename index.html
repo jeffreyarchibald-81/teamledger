@@ -107,6 +107,77 @@
         background-image: linear-gradient(145deg, rgba(31, 41, 55, 0.5) 0%, rgba(22, 27, 34, 0.8) 100%);
       }
 
+      /* Custom Scrollbar Styling for a modern look on Windows/Linux */
+      /* For Firefox */
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: #4B5563 #161B22;
+      }
+      /* For Webkit-based browsers (Chrome, Safari, Edge) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #161B22;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: #4B5563;
+        border-radius: 10px;
+        border: 2px solid #161B22;
+      }
+       ::-webkit-scrollbar-thumb:hover {
+        background-color: #6B7280;
+      }
+
+      /* Cross-browser compatibility fixes */
+      .backdrop-blur-sm {
+        -webkit-backdrop-filter: blur(4px);
+      }
+      .backdrop-blur-md {
+        -webkit-backdrop-filter: blur(12px);
+      }
+      input, select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+      }
+
+      /* --- ACCESSIBILITY ENHANCEMENTS --- */
+      /* Utility class to visually hide elements while keeping them accessible to screen readers. */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
+      /* Style for the "Skip to main content" link, making it visible on focus. */
+      .skip-link:focus {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        padding: 0.75rem 1.25rem;
+        background-color: #161B22;
+        color: #22d3ee;
+        border: 2px solid #22d3ee;
+        border-radius: 0.5rem;
+        z-index: 100;
+        text-decoration: none;
+        font-weight: bold;
+      }
+      /* Enhanced focus outline for keyboard accessibility. Only shows for keyboard users. */
+      *:focus-visible {
+        outline: 2px solid #22d3ee; /* brand-accent */
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.2);
+        border-radius: 2px;
+      }
+
       /* Core styles for rendering the organizational chart tree structure. */
       .org-tree {
         display: inline-block; /* Allows the tree to size based on content. */
@@ -212,6 +283,7 @@
 </script>
 </head>
   <body class="font-sans text-gray-200">
+    <a href="#main-content" class="sr-only skip-link">Skip to main content</a>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
     <script>

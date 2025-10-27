@@ -4,8 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 /** Key used in local storage to remember if the user has dismissed the notice. */
 const MOBILE_NOTICE_DISMISSED_KEY = 'teamledger-mobile-notice-dismissed';
-/** The viewport width threshold below which the notice will be shown. */
-const MOBILE_BREAKPOINT = 768; // pixels
 
 // --- Icon Components ---
 const XIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -30,10 +28,12 @@ const MobileNotice: React.FC = () => {
     /** Effect to determine if the notice should be shown on component mount. */
     useEffect(() => {
         try {
-            const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+            // Use User Agent sniffing for more reliable mobile/tablet detection,
+            // preventing the notice from appearing on resized desktop windows.
+            const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             const hasBeenDismissed = window.localStorage.getItem(MOBILE_NOTICE_DISMISSED_KEY) === 'true';
 
-            if (isMobile && !hasBeenDismissed) {
+            if (isMobileDevice && !hasBeenDismissed) {
                 setIsVisible(true);
             }
         } catch (error) {

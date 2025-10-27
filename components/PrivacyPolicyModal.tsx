@@ -9,6 +9,8 @@ import { motion, Variants } from 'framer-motion';
  * @description Defines the props for the PrivacyPolicyModal component.
  */
 interface PrivacyPolicyModalProps {
+    /** Flag indicating if the modal is currently open. Used for accessibility hooks. */
+    isOpen: boolean;
     /** Callback function to close the modal. */
     onClose: () => void;
 }
@@ -17,7 +19,7 @@ interface PrivacyPolicyModalProps {
  * @description A modal component that displays the application's privacy policy.
  * The content is hardcoded for simplicity.
  */
-const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ onClose }) => {
+const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose }) => {
     const backdropVariants = {
         hidden: { opacity: 0 },
         visible: { opacity: 1 }
@@ -35,13 +37,16 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ onClose }) => {
             onClick={onClose}
         >
             <motion.div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="privacy-modal-title"
                 className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-2xl"
                 variants={modalVariants}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* The content container is scrollable for smaller viewports. */}
                 <div className="p-6 max-h-[80vh] overflow-y-auto">
-                    <h3 className="text-xl font-bold text-white mb-4">Privacy Policy</h3>
+                    <h3 id="privacy-modal-title" className="text-xl font-bold text-white mb-4">Privacy Policy</h3>
                     <div className="space-y-4 text-gray-300 text-sm">
                         <p><strong>Last Updated:</strong> July 26, 2024</p>
                         <p>
@@ -106,7 +111,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ onClose }) => {
                         onClick={onClose}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                        className="bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors"
                     >
                         Close
                     </motion.button>

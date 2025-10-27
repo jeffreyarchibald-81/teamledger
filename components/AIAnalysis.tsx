@@ -172,7 +172,7 @@ const dummyAnalysis: AIAnalysisResult = {
 /** @description The UI state shown when the AI analysis feature is locked. */
 const LockedState: React.FC<{ onUnlockRequest: () => void; }> = ({ onUnlockRequest }) => (
     <div className="relative cursor-pointer" onClick={onUnlockRequest}>
-        <div className="blur-sm select-none pointer-events-none">
+        <div className="blur-sm select-none pointer-events-none" aria-hidden="true">
             <div className="grid md:grid-cols-3 gap-6">
                 <AnalysisCard title="Strengths" icon={CheckCircleIcon} items={dummyAnalysis.strengths} iconColor="text-white" />
                 <AnalysisCard title="Risks & Opportunities" icon={ExclamationTriangleIcon} items={dummyAnalysis.risks_opportunities} iconColor="text-white" />
@@ -198,7 +198,7 @@ const InitialState: React.FC<{onAnalyze: () => void; remaining: number; resetTim
             <p className="text-gray-300 mt-2 max-w-md mx-auto">Have a custom-trained AI analyze your team's structure, costs, and profitability to find strengths, risks, and opportunities.</p>
             <motion.button 
                 onClick={onAnalyze} disabled={!hasAnalysesLeft}
-                className="mt-6 bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-5 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-6 bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-2 px-5 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: hasAnalysesLeft ? 1.05 : 1 }} whileTap={{ scale: hasAnalysesLeft ? 0.95 : 1 }}
             >
                 {buttonText}
@@ -210,8 +210,9 @@ const InitialState: React.FC<{onAnalyze: () => void; remaining: number; resetTim
 
 /** @description The UI state shown while the analysis is in progress. */
 const LoadingState: React.FC = () => (
-    <div className="text-center flex flex-col items-center justify-center min-h-[250px]">
+    <div role="status" className="text-center flex flex-col items-center justify-center min-h-[250px]">
         <motion.div
+            aria-label="Loading analysis"
             animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             className="w-10 h-10 border-4 border-t-brand-accent border-gray-700 rounded-full mx-auto"
         />
@@ -226,7 +227,7 @@ const ResultsDisplay: React.FC<{result: AIAnalysisResult; onRerun: () => void; r
     const buttonText = !hasAnalysesLeft ? "Daily Limit Reached" : remaining === 1 ? "Re-analyze Chart (1 left)" : "Re-analyze Chart";
     
     return (
-    <div className="flex-grow flex flex-col">
+    <div aria-live="polite" className="flex-grow flex flex-col">
         <div className="grid md:grid-cols-3 gap-6 flex-grow">
             <AnalysisCard title="Strengths" icon={CheckCircleIcon} items={result.strengths} iconColor="text-white" />
             <AnalysisCard title="Risks & Opportunities" icon={ExclamationTriangleIcon} items={result.risks_opportunities} iconColor="text-white" />

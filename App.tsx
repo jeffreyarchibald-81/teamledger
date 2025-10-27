@@ -25,6 +25,61 @@ const SETTINGS_STORAGE_KEY = 'teamledger-settings';
 const MAX_HISTORY_SIZE = 30;
 
 /**
+ * A custom hook to manage accessibility for modals. It handles:
+ * - Trapping focus within the modal.
+ * - Closing the modal when the Escape key is pressed.
+ * @param isOpen - Boolean indicating if the modal is open.
+ * @param onClose - Callback function to close the modal.
+ * @param modalRef - A React ref attached to the modal's root element.
+ */
+const useAccessibilityModal = (isOpen: boolean, onClose: () => void, modalRef: React.RefObject<HTMLElement>) => {
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        const handleFocusTrap = (event: KeyboardEvent) => {
+            if (event.key !== 'Tab' || !modalRef.current) return;
+
+            const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey) { // Shift + Tab
+                if (document.activeElement === firstElement) {
+                    lastElement.focus();
+                    event.preventDefault();
+                }
+            } else { // Tab
+                if (document.activeElement === lastElement) {
+                    firstElement.focus();
+                    event.preventDefault();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', handleFocusTrap);
+        
+        // Focus the first focusable element in the modal when it opens
+        const firstFocusable = modalRef.current?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        firstFocusable?.focus();
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keydown', handleFocusTrap);
+        };
+    }, [isOpen, onClose, modalRef]);
+};
+
+
+/**
  * Calculates all financial metrics for a given position based on global settings.
  * This is a pure function, central to the application's logic.
  * @param positionInput An object containing the core inputs: salary, rate, and utilization.
@@ -692,14 +747,14 @@ const App: React.FC = () => {
             <div ref={logoRef} className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
                 <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
             </div>
-            <h1 className="font-bold text-white max-w-4xl mx-auto text-4xl sm:text-5xl lg:text-[3.35rem] leading-[1.1]">A smarter organizational structure chart maker – so you can grow your business with confidence.</h1>
+            <h1 className="font-bold text-white max-w-4xl mx-auto text-4xl sm:text-5xl lg:text-[3.35rem] leading-[1.15] sm:leading-[1.15]">A smarter organizational structure chart maker that helps you grow your business with confidence.</h1>
             <p className="text-gray-300 mt-4 max-w-3xl mx-auto" style={{ fontSize: '1.15rem' }}>
-                TeamLedger is a free org chart tool that connects your team structure to real financial data. Model your growth, see the impact of every role, and get AI-powered insights to operate with confidence.
+                TeamLedger is a free org chart and financial forecasting tool that combines team structure and financial data. Model your growth, see the impact of every role, and get AI-powered insights to operate with confidence.
             </p>
             <div className="mt-8">
                 <motion.button
                     onClick={handleGetStartedClick}
-                    className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 text-lg shadow-soft-glow"
+                    className="bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-3 px-8 rounded-lg transition-colors duration-200 text-lg shadow-soft-glow"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                 >
@@ -710,6 +765,7 @@ const App: React.FC = () => {
 
         {/* --- Main Content --- */}
         <motion.main 
+          id="main-content"
           className="space-y-12"
           variants={mainContainerVariants}
           initial="hidden"
@@ -721,9 +777,9 @@ const App: React.FC = () => {
               <div className="flex items-center space-x-4">
                 <h2 className="text-2xl font-semibold">Organizational Structure</h2>
                 {/* View switcher: Tree vs. List */}
-                <div className="flex items-center rounded-lg bg-brand-surface p-1 border border-brand-border">
-                  <button onClick={() => setChartView('tree')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'tree' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Tree</button>
-                  <button onClick={() => setChartView('list')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'list' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>List</button>
+                <div role="tablist" aria-label="Chart view" className="flex items-center rounded-lg bg-brand-surface p-1 border border-brand-border">
+                  <button role="tab" aria-selected={chartView === 'tree'} onClick={() => setChartView('tree')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'tree' ? 'bg-brand-accent/80 text-gray-900' : 'text-gray-400 hover:bg-gray-700'}`}>Tree</button>
+                  <button role="tab" aria-selected={chartView === 'list'} onClick={() => setChartView('list')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'list' ? 'bg-brand-accent/80 text-gray-900' : 'text-gray-400 hover:bg-gray-700'}`}>List</button>
                 </div>
               </div>
               <button
@@ -794,7 +850,7 @@ const App: React.FC = () => {
                           <p className="mt-2 max-w-sm">Create your first position to get started. A CEO or Founder is a great place to begin.</p>
                           <motion.button 
                               onClick={handleAddRootRole}
-                              className="mt-6 bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-5 rounded-lg transition-colors duration-200 flex items-center"
+                              className="mt-6 bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-2 px-5 rounded-lg transition-colors duration-200 flex items-center"
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                           >
@@ -814,6 +870,8 @@ const App: React.FC = () => {
               <h2 className="text-2xl font-semibold">Financial Breakdown</h2>
               <motion.button
                   onClick={() => setIsSettingsOpen(prev => !prev)}
+                  aria-expanded={isSettingsOpen}
+                  aria-controls="financial-settings-panel"
                   className="bg-brand-surface hover:bg-gray-800/60 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center border border-brand-border"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -828,6 +886,7 @@ const App: React.FC = () => {
             <AnimatePresence>
               {isSettingsOpen && (
                 <motion.div
+                  id="financial-settings-panel"
                   initial={{ maxHeight: 0, opacity: 0 }}
                   animate={{ maxHeight: '420px', opacity: 1, transition: { opacity: { duration: 0.3, delay: 0.1 } } }}
                   exit={{ maxHeight: 0, opacity: 0, transition: { opacity: { duration: 0.2 } } }}
@@ -872,7 +931,7 @@ const App: React.FC = () => {
                                 <p className="mt-1 text-xs text-gray-400">Applies a single rate to all billable roles.</p>
                                 <div className="mt-2 flex">
                                     <input type="number" id="global-rate" value={globalRate} onChange={e => setGlobalRate(e.target.value)} placeholder="e.g., 200" className="block w-full flex-1 rounded-none rounded-l-md bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
-                                    <button onClick={handleApplyGlobalRate} className="px-4 py-2 bg-brand-accent/80 hover:bg-brand-accent text-white font-semibold rounded-r-md text-sm transition-colors disabled:opacity-50" disabled={!globalRate}>Apply</button>
+                                    <button onClick={handleApplyGlobalRate} className="px-4 py-2 bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-semibold rounded-r-md text-sm transition-colors disabled:opacity-50" disabled={!globalRate}>Apply</button>
                                 </div>
                             </div>
                              <div>
@@ -880,7 +939,7 @@ const App: React.FC = () => {
                                 <p className="mt-1 text-xs text-gray-400">Applies a single utilization to all billable roles.</p>
                                 <div className="mt-2 flex">
                                     <input type="number" id="global-utilization" value={globalUtilization} onChange={e => setGlobalUtilization(e.target.value)} placeholder="e.g., 80" className="block w-full flex-1 rounded-none rounded-l-md bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
-                                    <button onClick={handleApplyGlobalUtilization} className="px-4 py-2 bg-brand-accent/80 hover:bg-brand-accent text-white font-semibold rounded-r-md text-sm transition-colors disabled:opacity-50" disabled={!globalUtilization}>Apply</button>
+                                    <button onClick={handleApplyGlobalUtilization} className="px-4 py-2 bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-semibold rounded-r-md text-sm transition-colors disabled:opacity-50" disabled={!globalUtilization}>Apply</button>
                                 </div>
                             </div>
                         </div>
@@ -951,6 +1010,7 @@ const App: React.FC = () => {
                       <ul className="list-disc list-inside text-gray-300 mt-4 space-y-2" style={{ fontSize: '1.15rem' }}>
                           <li>Agency owners who want to balance creative growth with profit.</li>
                           <li>Any service businesses who bill by the hour, or by fixed price.</li>
+                          <li>Business consultants who help with structure, growth, and forecasting.</li>
                           <li>Startup founders mapping their first org structure.</li>
                           <li>Operations leaders looking for improved department fiscal understanding.</li>
                       </ul>
@@ -961,7 +1021,7 @@ const App: React.FC = () => {
                   <section>
                       <h3 className="text-2xl font-semibold mb-4 text-white">Who built TeamLedger?</h3>
                       <p className="text-gray-300" style={{ fontSize: '1.15rem' }}>
-                          TeamLedger is a fun project by me, Jeff Archibald. I'm an <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">agency consultant</a> who primarily works with creative firms and service businesses. I used a janky spreadsheet in the past to do this type of work, so I figured I'd try building a nicer web version of it. Tada!
+                          TeamLedger is a fun project by me, Jeff Archibald. I'm an <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">agency consultant</a> who primarily works with creative firms and service businesses. I used a janky spreadsheet in the past to do this type of work, so I figured I'd try building a nicer web version of it. Tada! This is an MVP I hacked together over a weekend; if you'd like to request some features or whatever, use the Feedback button on the right.
                       </p>
                   </section>
               </div>
@@ -992,6 +1052,7 @@ const App: React.FC = () => {
             positions={positions}
             parentId={newPositionParentId}
             duplicateSource={duplicateSource}
+            isOpen={isEditorOpen}
           />
         )}
       </AnimatePresence>
@@ -1000,6 +1061,7 @@ const App: React.FC = () => {
       <AnimatePresence>
         {isDeleteAllConfirmOpen && (
            <ConfirmDeleteModal 
+              isOpen={isDeleteAllConfirmOpen}
               onClose={() => setIsDeleteAllConfirmOpen(false)}
               onConfirm={deleteAllPositions}
            />
@@ -1010,6 +1072,7 @@ const App: React.FC = () => {
       <AnimatePresence>
         {isExportModalOpen && (
            <ExportModal 
+              isOpen={isExportModalOpen}
               onClose={() => setIsExportModalOpen(false)}
               onConfirm={handleExport}
               onDownloadPng={handleDownloadPng}
@@ -1021,7 +1084,8 @@ const App: React.FC = () => {
       {/* Unlock Features Modal */}
       <AnimatePresence>
         {isUnlockModalOpen && (
-            <UnlockModal 
+            <UnlockModal
+                isOpen={isUnlockModalOpen} 
                 onClose={() => setIsUnlockModalOpen(false)}
                 onUnlockSuccess={() => {
                     setIsUnlockModalOpen(false);
@@ -1035,6 +1099,7 @@ const App: React.FC = () => {
       <AnimatePresence>
         {isHelpModalOpen && (
             <HelpModal 
+                isOpen={isHelpModalOpen}
                 onClose={() => setIsHelpModalOpen(false)}
                 isShowingSampleData={isShowingSampleData}
             />
@@ -1044,7 +1109,7 @@ const App: React.FC = () => {
       {/* Privacy Policy Modal */}
       <AnimatePresence>
         {isPrivacyModalOpen && (
-            <PrivacyPolicyModal onClose={() => setIsPrivacyModalOpen(false)} />
+            <PrivacyPolicyModal isOpen={isPrivacyModalOpen} onClose={() => setIsPrivacyModalOpen(false)} />
         )}
       </AnimatePresence>
 
@@ -1068,10 +1133,14 @@ const App: React.FC = () => {
  * @description A confirmation modal for the "Delete All" action.
  */
 interface ConfirmDeleteModalProps {
+  isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
-const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onClose, onConfirm }) => {
+const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ isOpen, onClose, onConfirm }) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+    useAccessibilityModal(isOpen, onClose, modalRef);
+
     const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
@@ -1084,11 +1153,15 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onClose, onConf
             variants={backdropVariants} initial="hidden" animate="visible" exit="hidden"
         >
           <motion.div 
+            ref={modalRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
             className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-sm"
             variants={modalVariants}
           >
             <div className="p-6">
-              <h3 className="text-xl font-bold text-white">Confirm Deletion</h3>
+              <h3 id="delete-modal-title" className="text-xl font-bold text-white">Confirm Deletion</h3>
               <p className="text-gray-400 mt-2">Are you sure you want to delete all positions? This action cannot be undone.</p>
             </div>
             <div className="bg-gray-900/50 px-6 py-4 flex justify-end space-x-3 rounded-b-lg">
@@ -1104,10 +1177,14 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onClose, onConf
  * @description A modal that provides quick instructions on how to use the app.
  */
 interface HelpModalProps {
+    isOpen: boolean;
     onClose: () => void;
     isShowingSampleData: boolean;
 }
-const HelpModal: React.FC<HelpModalProps> = ({ onClose, isShowingSampleData }) => {
+const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose, isShowingSampleData }) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+    useAccessibilityModal(isOpen, onClose, modalRef);
+
     const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
@@ -1132,12 +1209,16 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose, isShowingSampleData }) =
             onClick={onClose}
         >
             <motion.div 
+                ref={modalRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="help-modal-title"
                 className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-lg"
                 variants={modalVariants}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="p-6">
-                    <h3 className="text-xl font-bold text-white">How to Use TeamLedger</h3>
+                    <h3 id="help-modal-title" className="text-xl font-bold text-white">How to Use TeamLedger</h3>
                     {isShowingSampleData && (
                         <div className="mt-4 bg-yellow-900/50 border border-yellow-700 text-yellow-200 px-4 py-3 rounded-lg text-sm">
                             <p className="font-semibold">You're currently viewing a sample org chart.</p>
@@ -1145,7 +1226,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose, isShowingSampleData }) =
                         </div>
                     )}
                     <ul className="space-y-3 mt-4 text-gray-300 list-disc list-inside">
-                        <li><b>Build your chart:</b> Use the <UserPlusIcon className="w-4 h-4 inline-block -mt-1 mx-1" /> <PencilIcon className="w-4 h-4 inline-block -mt-1 mx-1" /> and <TrashIcon className="w-4 h-4 inline-block -mt-1 mx-1" /> icons on each card to add, edit, or delete roles. The "Actions" menu also allows you to add roles and clear the chart.</li>
+                        <li><b>Build your chart:</b> Use the <UserPlusIcon className="w-4 h-4 inline-block -mt-1 mx-1" aria-hidden="true" /> <PencilIcon className="w-4 h-4 inline-block -mt-1 mx-1" aria-hidden="true" /> and <TrashIcon className="w-4 h-4 inline-block -mt-1 mx-1" aria-hidden="true" /> icons on each card to add, edit, or delete roles. The "Actions" menu also allows you to add roles and clear the chart.</li>
                         <li><b>Change views:</b> Toggle between the "Tree" and "List" views to see your structure differently.</li>
                         <li><b>Quick edits:</b> Click on any Role, Salary, Rate, or Utilization value in the Financial Breakdown table to edit it directly.</li>
                         <li><b>Global settings:</b> Adjust the company-wide multipliers for benefits and overhead in the "Settings" section.</li>
@@ -1158,7 +1239,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose, isShowingSampleData }) =
                         onClick={onClose} 
                         whileHover={{ scale: 1.05 }} 
                         whileTap={{ scale: 0.95 }} 
-                        className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                        className="bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors"
                     >
                         Got it!
                     </motion.button>
@@ -1172,15 +1253,18 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose, isShowingSampleData }) =
  * @description Modal for unlocking premium features by providing an email address.
  */
 interface UnlockModalProps {
+    isOpen: boolean;
     onClose: () => void;
     onUnlockSuccess: () => void;
 }
-const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) => {
+const UnlockModal: React.FC<UnlockModalProps> = ({ isOpen, onClose, onUnlockSuccess }) => {
     const { unlockApp } = useAuth();
     const [email, setEmail] = useState('');
     const [emailError, setEmailError] = useState('');
     const [apiError, setApiError] = useState('');
     const [status, setStatus] = useState<'idle' | 'submitting'>('idle');
+    const modalRef = useRef<HTMLDivElement>(null);
+    useAccessibilityModal(isOpen, onClose, modalRef);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1223,12 +1307,16 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
             variants={backdropVariants} initial="hidden" animate="visible" exit="hidden" onClick={onClose}
         >
           <motion.div 
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unlock-modal-title"
             className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-md"
             variants={modalVariants} onClick={(e) => e.stopPropagation()}
           >
             <form onSubmit={handleSubmit}>
               <div className="px-6 pt-6 pb-4">
-                <h3 className="text-xl font-bold text-white">Unlock All Features</h3>
+                <h3 id="unlock-modal-title" className="text-xl font-bold text-white">Unlock All Features</h3>
                 <p className="text-gray-400 mt-2">Get the full picture. Unlock these powerful features by entering your email:</p>
                 
                 <ul className="space-y-3 mt-4 text-gray-300">
@@ -1240,7 +1328,9 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
                 </ul>
                 
                 <div className="mt-6">
+                  <label htmlFor="unlock-email" className="sr-only">Email Address</label>
                   <input
+                      id="unlock-email"
                       type="email" value={email}
                       onChange={(e) => {
                           setEmail(e.target.value);
@@ -1248,23 +1338,23 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
                           if (apiError) setApiError('');
                       }}
                       placeholder="your@email.com" required
+                      aria-invalid={!!emailError || !!apiError}
+                      aria-describedby="unlock-email-error"
                       className={`w-full bg-white border rounded-lg px-3 py-2 text-gray-900 placeholder-gray-500 focus:ring-2 focus:border-brand-accent ${emailError || apiError ? 'border-red-500 focus:ring-red-500' : 'border-brand-border focus:ring-brand-accent'}`}
                   />
-                  {emailError && <p className="text-red-400 text-sm mt-1">{emailError}</p>}
+                  {(emailError || apiError) && (
+                    <p id="unlock-email-error" className="text-red-400 text-sm mt-1">
+                      {emailError || apiError}
+                    </p>
+                  )}
                 </div>
-
-                {apiError && (
-                    <div className="mt-4 text-center text-sm text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/30">
-                        {apiError}
-                    </div>
-                )}
               </div>
               <div className="bg-gray-900/50 px-6 py-4 rounded-b-lg">
                 <div className="flex flex-col-reverse sm:flex-row sm:justify-start sm:items-center sm:space-x-4">
                   <motion.button 
                       type="submit" disabled={status === 'submitting' || !email} 
                       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} 
-                      className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
                       {status === 'submitting' ? 'Unlocking...' : 'Unlock Now'}
                       <SparklesIcon className="w-4 h-4 ml-2" />
@@ -1290,6 +1380,7 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
 const SuccessToast: React.FC = () => {
     return (
         <motion.div
+            role="status"
             className="fixed bottom-5 right-5 bg-green-600/90 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center z-[100] backdrop-blur-sm border border-green-500"
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1309,16 +1400,19 @@ const SuccessToast: React.FC = () => {
  * @description Modal for exporting data as a shareable link, CSV, or PNG.
  */
 interface ExportModalProps {
+    isOpen: boolean;
     onClose: () => void;
     onConfirm: () => { link: string; csv: string };
     onDownloadPng: () => Promise<void>;
     isPngExportAvailable: boolean;
 }
-const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloadPng, isPngExportAvailable }) => {
+const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, onDownloadPng, isPngExportAvailable }) => {
     const [shareableLink, setShareableLink] = useState('');
     const [csvData, setCsvData] = useState('');
     const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
     const [isGeneratingPng, setIsGeneratingPng] = useState(false);
+    const modalRef = useRef<HTMLDivElement>(null);
+    useAccessibilityModal(isOpen, onClose, modalRef);
 
     // Generate the export data when the modal opens.
     useEffect(() => {
@@ -1371,17 +1465,22 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloa
             variants={backdropVariants} initial="hidden" animate="visible" exit="hidden"
         >
           <motion.div 
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-modal-title"
             className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-md"
             variants={modalVariants}
           >
             <div className="p-6">
                 <div className="text-left">
-                    <h3 className="text-xl font-bold text-white">Export & Share</h3>
+                    <h3 id="export-modal-title" className="text-xl font-bold text-white">Export & Share</h3>
                     <p className="text-gray-400 mt-2 mb-4">Here are your shareable link and export options.</p>
                     
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Shareable Link</label>
+                    <label htmlFor="shareable-link-input" className="block text-sm font-medium text-gray-300 mb-1">Shareable Link</label>
                     <div className="flex space-x-2">
                         <input
+                            id="shareable-link-input"
                             type="text" readOnly value={shareableLink}
                             className="w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
                         />
@@ -1400,7 +1499,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloa
                                 {isGeneratingPng ? 'Generating...' : 'Download PNG'}
                             </motion.button>
                         )}
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadCsv} className="w-full flex justify-center items-center bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadCsv} className="w-full flex justify-center items-center bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors">
                             <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
                             Download CSV
                         </motion.button>

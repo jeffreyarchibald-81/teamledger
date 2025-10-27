@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -125,7 +126,7 @@ const AutosaveIndicator: React.FC<AutosaveIndicatorProps> = ({ status, onClick }
     );
 
     return (
-        <div className="w-48 h-5 flex justify-end items-center">
+        <div aria-live="polite" aria-atomic="true" className="w-48 h-5 flex justify-end items-center">
             <AnimatePresence mode="wait">
                 {status === 'disabled' ? (
                     <motion.button {...motionProps} onClick={onClick}
@@ -186,6 +187,10 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
                         
                         <div className="relative" ref={actionMenuRef}>
                             <motion.button
+                                id="actions-menu-button"
+                                aria-haspopup="true"
+                                aria-expanded={isActionMenuOpen}
+                                aria-controls="actions-menu"
                                 onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
                                 className="bg-transparent border border-brand-accent text-brand-accent font-bold py-1.5 px-3 text-sm rounded-lg transition-colors duration-200 flex items-center hover:bg-brand-accent/20"
                                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -198,26 +203,29 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
                             <AnimatePresence>
                                 {isActionMenuOpen && (
                                     <motion.div
+                                        id="actions-menu"
+                                        role="menu"
+                                        aria-labelledby="actions-menu-button"
                                         className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-20"
                                         initial={{ opacity: 0, scale: 0.95, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.95, y: -10 }} transition={{ duration: 0.15 }}
                                     >
-                                        <div className="py-1" role="menu" aria-orientation="vertical">
-                                            <button onClick={onUndo} disabled={!canUndo} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem">
+                                        <div className="py-1">
+                                            <button onClick={onUndo} disabled={!canUndo} role="menuitem" className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <UndoIcon className="w-4 h-4 mr-3 text-gray-400" />Undo Last Action
                                             </button>
                                             <div className="border-t border-brand-border my-1"></div>
-                                            <button onClick={onExportClick} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white" role="menuitem">
+                                            <button onClick={onExportClick} role="menuitem" className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white">
                                                 <ArrowUpTrayIcon className="w-4 h-4 mr-3 text-gray-400" />Export & Share
                                             </button>
-                                            <button onClick={onLoadSampleData} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white" role="menuitem">
+                                            <button onClick={onLoadSampleData} role="menuitem" className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white">
                                                 <ArrowPathIcon className="w-4 h-4 mr-3 text-gray-400" />Load Sample Data
                                             </button>
-                                            <button onClick={onAddRootRole} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white" role="menuitem">
+                                            <button onClick={onAddRootRole} role="menuitem" className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white">
                                                 <PlusIcon className="w-4 h-4 mr-3 text-gray-400" />Add Role
                                             </button>
                                             <div className="border-t border-brand-border my-1"></div>
-                                            <button onClick={() => { onDeleteAll(); setIsActionMenuOpen(false); }} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300" role="menuitem">
+                                            <button onClick={() => { onDeleteAll(); setIsActionMenuOpen(false); }} role="menuitem" className="w-full text-left flex items-center px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300">
                                                 <TrashIcon className="w-4 h-4 mr-3" />Delete All
                                             </button>
                                         </div>
@@ -228,7 +236,7 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
                         {!isUnlocked && (
                             <motion.button
                                 onClick={onSignInClick}
-                                className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-1.5 px-3 text-sm rounded-lg transition-colors duration-200 flex items-center shadow-soft-glow"
+                                className="bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-1.5 px-3 text-sm rounded-lg transition-colors duration-200 flex items-center shadow-soft-glow"
                                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                             >
                                 Sign In

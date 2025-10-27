@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Position } from '../types';
@@ -54,16 +55,16 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onAddSubordinate,
         </div>
         {/* Action buttons for manipulating the position */}
         <div className="flex flex-col space-y-1 ml-2">
-            <button onClick={onAddSubordinate} title="Add Report" className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
+            <button onClick={onAddSubordinate} aria-label={`Add report to ${position.role}`} className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
                 <UserPlusIcon className="w-4 h-4 text-gray-300" />
             </button>
-            <button onClick={onEdit} title="Edit Position" className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
+            <button onClick={onEdit} aria-label={`Edit ${position.role}`} className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
                 <PencilIcon className="w-4 h-4 text-gray-300" />
             </button>
-             <button onClick={onDuplicate} title="Duplicate Position" className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
+             <button onClick={onDuplicate} aria-label={`Duplicate ${position.role}`} className="p-1.5 rounded-full hover:bg-gray-600/50 transition-colors">
                 <DocumentDuplicateIcon className="w-4 h-4 text-gray-300" />
             </button>
-            <button onClick={onDelete} title="Delete Position" className="p-1.5 rounded-full hover:bg-red-500/20 transition-colors">
+            <button onClick={onDelete} aria-label={`Delete ${position.role}`} className="p-1.5 rounded-full hover:bg-red-500/20 transition-colors">
                 <TrashIcon className="w-4 h-4 text-red-400" />
             </button>
         </div>

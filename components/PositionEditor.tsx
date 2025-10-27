@@ -10,6 +10,8 @@ import { Position, PositionInput, PositionUpdate } from '../types';
  * @description Defines the props for the PositionEditor modal component.
  */
 interface PositionEditorProps {
+  /** Flag indicating if the modal is currently open. Used for accessibility hooks. */
+  isOpen: boolean;
   /** Callback function to close the modal without saving. */
   onClose: () => void;
   /** Callback function to save the new or updated position data. */
@@ -28,7 +30,7 @@ interface PositionEditorProps {
  * @description A modal form component for creating, editing, and duplicating positions.
  * It handles all form state and logic internally.
  */
-const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existingPosition, positions, parentId, duplicateSource }) => {
+const PositionEditor: React.FC<PositionEditorProps> = ({ isOpen, onClose, onSave, existingPosition, positions, parentId, duplicateSource }) => {
   // State for each form field.
   const [role, setRole] = useState('');
   const [salary, setSalary] = useState('');
@@ -115,34 +117,38 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
         variants={backdropVariants} initial="hidden" animate="visible" exit="hidden"
     >
       <motion.div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="editor-title"
         className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-md"
         variants={modalVariants}
       >
         <form onSubmit={handleSubmit}>
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-white mb-6">{existingPosition ? 'Edit Position' : 'Add New Position'}</h2>
+            <h2 id="editor-title" className="text-2xl font-bold text-white mb-6">{existingPosition ? 'Edit Position' : 'Add New Position'}</h2>
             <div className="space-y-4">
-              <InputField label="Role Title" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g., Senior Developer" required />
+              <InputField id="role" label="Role Title" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g., Senior Developer" required />
               
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Role Type</label>
+              <div role="radiogroup" aria-labelledby="role-type-label">
+                <span id="role-type-label" className="block text-sm font-medium text-gray-300 mb-2">Role Type</span>
                 <div className="flex rounded-lg bg-gray-900 border border-brand-border p-1">
-                  <button type="button" onClick={() => setRoleType('billable')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roleType === 'billable' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
+                  <button type="button" role="radio" aria-checked={roleType === 'billable'} onClick={() => setRoleType('billable')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roleType === 'billable' ? 'bg-brand-accent/80 text-gray-900' : 'text-gray-400 hover:bg-gray-800'}`}>
                     Billable
                   </button>
-                  <button type="button" onClick={() => setRoleType('nonBillable')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roleType === 'nonBillable' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
+                  <button type="button" role="radio" aria-checked={roleType === 'nonBillable'} onClick={() => setRoleType('nonBillable')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roleType === 'nonBillable' ? 'bg-brand-accent/80 text-gray-900' : 'text-gray-400 hover:bg-gray-800'}`}>
                     Non-Billable
                   </button>
                 </div>
               </div>
 
-              <InputField label="Salary ($)" type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="e.g., 90000" required />
-              <InputField label="Billable Rate ($/hr)" type="number" value={rate} onChange={e => setRate(e.target.value)} placeholder="e.g., 175" disabled={roleType === 'nonBillable'} />
-              <InputField label="Utilization (%)" type="number" value={utilization} onChange={e => setUtilization(e.target.value)} placeholder="e.g., 75" disabled={roleType === 'nonBillable'} />
+              <InputField id="salary" label="Salary ($)" type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="e.g., 90000" required />
+              <InputField id="rate" label="Billable Rate ($/hr)" type="number" value={rate} onChange={e => setRate(e.target.value)} placeholder="e.g., 175" disabled={roleType === 'nonBillable'} />
+              <InputField id="utilization" label="Utilization (%)" type="number" value={utilization} onChange={e => setUtilization(e.target.value)} placeholder="e.g., 75" disabled={roleType === 'nonBillable'} />
               
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Manager</label>
+                <label htmlFor="manager" className="block text-sm font-medium text-gray-300 mb-1">Manager</label>
                 <select
+                  id="manager"
                   value={managerId ?? ''}
                   onChange={e => setManagerId(e.target.value || null)}
                   className="w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
@@ -157,7 +163,7 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
           </div>
           <div className="bg-gray-900/50 px-6 py-4 flex justify-end space-x-3 rounded-b-lg">
             <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancel</motion.button>
-            <motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors">Save</motion.button>
+            <motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-brand-accent/80 hover:bg-brand-accent text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors">Save</motion.button>
           </div>
         </form>
       </motion.div>
@@ -172,15 +178,18 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
 interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
     /** The label text to display above the input field. */
     label: string;
+    /** The id for the input, used to link the label. */
+    id: string;
 }
 
 /**
  * @description A reusable, styled text input component with a label.
  */
-const InputField: React.FC<InputFieldProps> = ({ label, ...props }) => (
+const InputField: React.FC<InputFieldProps> = ({ id, label, ...props }) => (
     <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
         <input
+            id={id}
             {...props}
             className={`w-full border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent transition-colors ${props.disabled ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-900'}`}
         />
