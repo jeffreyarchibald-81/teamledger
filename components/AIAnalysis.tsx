@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AIAnalysisResult } from '../types';
 
@@ -33,17 +33,108 @@ const ExclamationTriangleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props)
     </svg>
 );
 
+const ANALYSIS_LIMIT_KEY = 'teamledger-ai-analysis-limit';
+const DAILY_LIMIT = 3;
+
 
 const AIAnalysis: React.FC<AIAnalysisProps> = ({ isUnlocked, onRunAnalysis, analysisResult, isAnalyzing, onUnlockRequest }) => {
+    const [remainingAnalyses, setRemainingAnalyses] = useState(DAILY_LIMIT);
+    const [resetTimeMessage, setResetTimeMessage] = useState('');
+
+    useEffect(() => {
+        if (!isUnlocked) return;
+
+        try {
+            const storedData = window.localStorage.getItem(ANALYSIS_LIMIT_KEY);
+            if (storedData) {
+                const { count, timestamp } = JSON.parse(storedData);
+                const today = new Date().toDateString();
+                const lastAnalysisDay = new Date(timestamp).toDateString();
+
+                if (today !== lastAnalysisDay) {
+                    window.localStorage.removeItem(ANALYSIS_LIMIT_KEY);
+                    setRemainingAnalyses(DAILY_LIMIT);
+                } else {
+                    setRemainingAnalyses(Math.max(0, DAILY_LIMIT - count));
+                }
+            } else {
+                setRemainingAnalyses(DAILY_LIMIT);
+            }
+        } catch (error) {
+            console.error("Failed to read analysis limit from localStorage", error);
+            setRemainingAnalyses(DAILY_LIMIT);
+        }
+    }, [isUnlocked]);
+
+    useEffect(() => {
+        // FIX: Use 'number' for setInterval return type in browser environments instead of 'NodeJS.Timeout'.
+        let timer: number | null = null;
+        if (remainingAnalyses <= 0) {
+            const calculateResetTime = () => {
+                const now = new Date();
+                const tomorrow = new Date(now);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(0, 0, 0, 0);
+                
+                const diffMs = tomorrow.getTime() - now.getTime();
+                if (diffMs <= 0) {
+                    setRemainingAnalyses(DAILY_LIMIT);
+                    setResetTimeMessage('');
+                    window.localStorage.removeItem(ANALYSIS_LIMIT_KEY);
+                    if (timer) clearInterval(timer);
+                    return;
+                }
+
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                setResetTimeMessage(`Resets in ${diffHours}h ${diffMinutes}m`);
+            };
+            
+            calculateResetTime(); // Initial calculation
+            timer = setInterval(calculateResetTime, 1000 * 30); // Update every 30 seconds
+            
+            return () => {
+                if (timer) clearInterval(timer);
+            };
+        }
+    }, [remainingAnalyses]);
+
+    const handleProtectedAnalysis = () => {
+        if (remainingAnalyses <= 0 || !isUnlocked) {
+            return;
+        }
+
+        try {
+            const storedData = window.localStorage.getItem(ANALYSIS_LIMIT_KEY);
+            let currentCount = 0;
+            if (storedData) {
+                const { count, timestamp } = JSON.parse(storedData);
+                if (new Date().toDateString() === new Date(timestamp).toDateString()) {
+                    currentCount = count;
+                }
+            }
+
+            const newCount = currentCount + 1;
+            const newData = JSON.stringify({ count: newCount, timestamp: Date.now() });
+            window.localStorage.setItem(ANALYSIS_LIMIT_KEY, newData);
+            
+            setRemainingAnalyses(DAILY_LIMIT - newCount);
+
+        } catch (error) {
+            console.error("Failed to update analysis limit in localStorage", error);
+        }
+
+        onRunAnalysis();
+    };
 
     const renderContent = () => {
         if (isAnalyzing) {
             return <div className="flex-grow flex items-center justify-center"><LoadingState /></div>;
         }
         if (analysisResult) {
-            return <ResultsDisplay result={analysisResult} onRerun={onRunAnalysis} />;
+            return <ResultsDisplay result={analysisResult} onRerun={handleProtectedAnalysis} remaining={remainingAnalyses} resetTimeMessage={resetTimeMessage} />;
         }
-        return <div className="flex-grow flex items-center justify-center"><InitialState onAnalyze={onRunAnalysis} /></div>;
+        return <div className="flex-grow flex items-center justify-center"><InitialState onAnalyze={handleProtectedAnalysis} remaining={remainingAnalyses} resetTimeMessage={resetTimeMessage} /></div>;
     };
 
     return (
@@ -101,20 +192,37 @@ const LockedState: React.FC<{ onUnlockRequest: () => void; }> = ({ onUnlockReque
 );
 
 
-const InitialState: React.FC<{onAnalyze: () => void}> = ({ onAnalyze }) => (
-    <div className="text-center flex flex-col items-center justify-center min-h-[250px]">
-        <h3 className="text-lg font-semibold text-white">Get instant insights on your org chart</h3>
-        <p className="text-gray-300 mt-2 max-w-md mx-auto">Have a custom-trained AI analyze your team's structure, costs, and profitability to find strengths, risks, and opportunities.</p>
-        <motion.button 
-            onClick={onAnalyze}
-            className="mt-6 bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-5 rounded-lg transition-colors duration-200"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-        >
-            Run Analysis
-        </motion.button>
-    </div>
-);
+const InitialState: React.FC<{onAnalyze: () => void; remaining: number; resetTimeMessage: string}> = ({ onAnalyze, remaining, resetTimeMessage }) => {
+    const hasAnalysesLeft = remaining > 0;
+    let buttonText: string;
+
+    if (!hasAnalysesLeft) {
+        buttonText = "Daily Limit Reached";
+    } else if (remaining === 1) {
+        buttonText = "Run Analysis (1 left)";
+    } else {
+        buttonText = "Run Analysis";
+    }
+
+    return (
+        <div className="text-center flex flex-col items-center justify-center min-h-[250px]">
+            <h3 className="text-lg font-semibold text-white">Get instant insights on your org chart</h3>
+            <p className="text-gray-300 mt-2 max-w-md mx-auto">Have a custom-trained AI analyze your team's structure, costs, and profitability to find strengths, risks, and opportunities.</p>
+            <motion.button 
+                onClick={onAnalyze}
+                disabled={!hasAnalysesLeft}
+                className="mt-6 bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-5 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: hasAnalysesLeft ? 1.05 : 1 }}
+                whileTap={{ scale: hasAnalysesLeft ? 0.95 : 1 }}
+            >
+                {buttonText}
+            </motion.button>
+             {!hasAnalysesLeft && resetTimeMessage && (
+                <p className="text-sm text-gray-400 mt-3">{resetTimeMessage}</p>
+            )}
+        </div>
+    );
+};
 
 const LoadingState: React.FC = () => (
     <div className="text-center">
@@ -128,7 +236,19 @@ const LoadingState: React.FC = () => (
     </div>
 );
 
-const ResultsDisplay: React.FC<{result: AIAnalysisResult; onRerun: () => void}> = ({ result, onRerun }) => (
+const ResultsDisplay: React.FC<{result: AIAnalysisResult; onRerun: () => void; remaining: number; resetTimeMessage: string}> = ({ result, onRerun, remaining, resetTimeMessage }) => {
+    const hasAnalysesLeft = remaining > 0;
+    let buttonText: string;
+
+    if (!hasAnalysesLeft) {
+        buttonText = "Daily Limit Reached";
+    } else if (remaining === 1) {
+        buttonText = "Re-analyze Chart (1 left)";
+    } else {
+        buttonText = "Re-analyze Chart";
+    }
+    
+    return (
     <div>
         <div className="grid md:grid-cols-3 gap-6">
             <AnalysisCard title="Strengths" icon={CheckCircleIcon} items={result.strengths} iconColor="text-white" />
@@ -138,15 +258,20 @@ const ResultsDisplay: React.FC<{result: AIAnalysisResult; onRerun: () => void}> 
          <div className="text-center mt-8">
             <motion.button 
                 onClick={onRerun}
-                className="text-brand-accent hover:text-white text-sm font-semibold transition-colors"
-                whileHover={{ y: -2 }}
-                whileTap={{ y: 0 }}
+                disabled={!hasAnalysesLeft}
+                className="text-brand-accent hover:text-white text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ y: hasAnalysesLeft ? -2 : 0 }}
+                whileTap={{ y: hasAnalysesLeft ? 0 : 0 }}
             >
-                Re-analyze Chart
+                {buttonText}
             </motion.button>
+            {!hasAnalysesLeft && resetTimeMessage && (
+                <p className="text-sm text-gray-400 mt-2">{resetTimeMessage}</p>
+            )}
         </div>
     </div>
-);
+    );
+};
 
 
 interface AnalysisCardProps {

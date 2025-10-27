@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 // FIX: import Variants to fix framer-motion type errors
 import { motion, AnimatePresence, Variants } from 'framer-motion';
@@ -99,6 +100,12 @@ const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
+const XIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+);
+
 
 const App: React.FC = () => {
   const { isUnlocked } = useAuth();
@@ -190,9 +197,11 @@ const App: React.FC = () => {
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'disabled'>('idle');
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isShowingSampleData, setIsShowingSampleData] = useState(false);
+  const [isSampleNoticeVisible, setIsSampleNoticeVisible] = useState(false);
   
   const orgChartRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLElement>(null);
+  const orgStructureRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLDivElement>(null);
   const isInitialLoad = useRef(true);
   
   useEffect(() => {
@@ -215,6 +224,7 @@ const App: React.FC = () => {
     const data = urlParams.get('data');
     if (!savedPositions && !data) {
         setIsShowingSampleData(true);
+        setIsSampleNoticeVisible(true);
     }
   }, []);
 
@@ -261,9 +271,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-        if (headerRef.current) {
-            const { bottom } = headerRef.current.getBoundingClientRect();
-            setIsStickyHeaderVisible(window.scrollY > bottom);
+        if (logoRef.current) {
+            const { bottom } = logoRef.current.getBoundingClientRect();
+            setIsStickyHeaderVisible(bottom <= 0);
         }
     };
     window.addEventListener('scroll', handleScroll);
@@ -291,6 +301,7 @@ const App: React.FC = () => {
     };
     setPositions([...positions, newPosition]);
     setIsShowingSampleData(false);
+    setIsSampleNoticeVisible(false);
   };
 
   const updatePosition = useCallback((positionUpdate: PositionUpdate) => {
@@ -300,6 +311,7 @@ const App: React.FC = () => {
       p.id === positionUpdate.id ? { ...p, ...positionUpdate, ...financials } : p
     ));
     setIsShowingSampleData(false);
+    setIsSampleNoticeVisible(false);
   }, [benefitsMultiplier, overheadMultiplier, annualBillableHours, positions, saveStateForUndo]);
 
   const deletePosition = (id: string) => {
@@ -315,6 +327,7 @@ const App: React.FC = () => {
         return updatedPositions;
     });
     setIsShowingSampleData(false);
+    setIsSampleNoticeVisible(false);
   };
 
   const deleteAllPositions = () => {
@@ -322,6 +335,7 @@ const App: React.FC = () => {
     setPositions([]);
     setIsDeleteAllConfirmOpen(false);
     setIsShowingSampleData(false);
+    setIsSampleNoticeVisible(false);
   };
 
   const loadSampleData = () => {
@@ -333,6 +347,7 @@ const App: React.FC = () => {
     setPositions(recalculatedSampleData);
     setIsActionMenuOpen(false);
     setIsShowingSampleData(true);
+    setIsSampleNoticeVisible(true);
     window.history.pushState({}, '', window.location.pathname);
   };
 
@@ -571,6 +586,20 @@ const App: React.FC = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
   };
 
+  const handleGetStartedClick = () => {
+    if (orgStructureRef.current) {
+        // The sticky header is 64px (h-16). We add extra space for better visual alignment.
+        const headerOffset = 80;
+        const elementPosition = orgStructureRef.current.getBoundingClientRect().top + window.pageYOffset;
+        const offsetPosition = elementPosition - headerOffset;
+
+        window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+        });
+    }
+  };
+
   return (
     <div className="min-h-screen text-gray-200 p-4 sm:p-6 lg:p-8">
       <AnimatePresence>
@@ -591,14 +620,24 @@ const App: React.FC = () => {
         )}
       </AnimatePresence>
       <div className="max-w-7xl mx-auto">
-        <header ref={headerRef} className="text-center" style={{ margin: '2rem 0 6rem 0' }}>
-            <div className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
+        <header className="text-center" style={{ margin: '2rem 0 6rem 0' }}>
+            <div ref={logoRef} className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
                 <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
             </div>
             <h1 className="font-bold text-white max-w-4xl mx-auto text-4xl sm:text-5xl lg:text-[3.35rem] leading-[1.1]">A smarter organizational structure chart maker – so you can grow your business with confidence.</h1>
             <p className="text-gray-300 mt-4 max-w-3xl mx-auto" style={{ fontSize: '1.15rem' }}>
                 TeamLedger is a free org chart tool that connects your team structure to real financial data. Model your growth, see the impact of every role, and get AI-powered insights to operate with confidence.
             </p>
+            <div className="mt-8">
+                <motion.button
+                    onClick={handleGetStartedClick}
+                    className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 text-lg shadow-soft-glow"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    Get Started
+                </motion.button>
+            </div>
         </header>
 
         <motion.main 
@@ -607,7 +646,7 @@ const App: React.FC = () => {
           initial="hidden"
           animate="visible"
         >
-          <motion.div variants={itemVariants}>
+          <motion.div variants={itemVariants} ref={orgStructureRef}>
             <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
               <div className="flex items-center space-x-4">
                 <h2 className="text-2xl font-semibold">Organizational Structure</h2>
@@ -625,6 +664,27 @@ const App: React.FC = () => {
               </button>
             </div>
             <div className="bg-brand-surface/50 p-4 rounded-lg border border-brand-border overflow-x-auto relative min-h-[200px]">
+              {isShowingSampleData && isSampleNoticeVisible && (
+                <div className="absolute top-5 right-5 bg-yellow-900/60 border border-yellow-700 text-yellow-200 px-4 py-3 rounded-lg text-sm max-w-xs shadow-lg backdrop-blur-sm z-10">
+                  <button
+                      onClick={() => setIsSampleNoticeVisible(false)}
+                      className="absolute -top-2 -right-2 p-1 rounded-full bg-yellow-800 hover:bg-yellow-700 transition-colors"
+                      aria-label="Dismiss notice"
+                  >
+                      <XIcon className="w-4 h-4 text-yellow-200" />
+                  </button>
+                  <p>
+                    This is a sample org chart. Customize it, or{' '}
+                    <button
+                      onClick={() => setIsDeleteAllConfirmOpen(true)}
+                      className="font-semibold underline hover:text-white transition-colors"
+                    >
+                      delete it to start from scratch
+                    </button>
+                    .
+                  </p>
+                </div>
+              )}
               <AnimatePresence mode="wait">
                   <motion.div
                       key={chartView}
