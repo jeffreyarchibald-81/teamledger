@@ -1,10 +1,11 @@
+
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
 const AUTH_STORAGE_KEY = 'teamledger-unlocked';
 
 interface AuthContextType {
   isUnlocked: boolean;
-  unlockApp: (email: string) => Promise<void>;
+  unlockApp: (email: string) => Promise<{ success: boolean; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,7 +32,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [isUnlocked]);
 
-  const unlockApp = async (email: string) => {
+  const unlockApp = async (email: string): Promise<{ success: boolean; message?: string }> => {
     // This function now automatically handles the difference between your
     // local development environment and your live production website.
     // We check the hostname to determine if we are in production.
@@ -40,8 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (isProduction) {
       // --- PRODUCTION LOGIC ---
       // This code will ONLY run on your live website.
-      // NOTE: For advanced email validation (preventing fake emails), a paid
-      // FormSpree plan with server-side validation enabled is required.
+      // It now handles the server-side validation response from FormSpree.
       const FORM_ENDPOINT = "https://formspree.io/f/mdkpoank"; 
       
       try {
@@ -54,16 +54,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           body: JSON.stringify({ email }),
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to submit email.');
+        if (response.ok) {
+          console.log('Email submitted successfully to Formspree!');
+          setIsUnlocked(true);
+          return { success: true };
         }
         
-        console.log('Email submitted successfully to Formspree!');
+        // If response is not OK, parse the error message from FormSpree.
+        const errorData = await response.json();
+        const errorMessage = errorData.errors?.[0]?.message || 'An unexpected error occurred. Please try again.';
+        console.error('Formspree submission error:', errorData);
+        return { success: false, message: errorMessage };
         
       } catch (error) {
         console.error('There was an error submitting the email:', error);
-        // We can still unlock the app locally even if the submission fails,
-        // so the user experience isn't broken.
+        return { success: false, message: 'Could not connect to the server. Please check your internet connection and try again.' };
       }
     } else {
       // --- DEVELOPMENT LOGIC ---
@@ -72,10 +77,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log(`Email: ${email}`);
       console.log(`In production, this would be sent to your Formspree endpoint.`);
       await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    }
     
-    // After the appropriate action is taken, unlock the app.
-    setIsUnlocked(true);
+      // After the appropriate action is taken, unlock the app.
+      setIsUnlocked(true);
+      return { success: true };
+    }
   };
 
   return (

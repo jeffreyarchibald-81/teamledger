@@ -1086,6 +1086,7 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
     const { unlockApp } = useAuth();
     const [email, setEmail] = useState('');
     const [emailError, setEmailError] = useState('');
+    const [apiError, setApiError] = useState('');
     const [status, setStatus] = useState<'idle' | 'submitting'>('idle');
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -1097,10 +1098,16 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
             return;
         }
         setEmailError('');
+        setApiError('');
 
         setStatus('submitting');
-        await unlockApp(email);
-        onUnlockSuccess();
+        const result = await unlockApp(email);
+        if (result.success) {
+            onUnlockSuccess();
+        } else {
+            setApiError(result.message || 'An unexpected error occurred. Please try again.');
+            setStatus('idle');
+        }
     };
     
     const backdropVariants = {
@@ -1164,13 +1171,20 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
                       onChange={(e) => {
                           setEmail(e.target.value);
                           if (emailError) setEmailError('');
+                          if (apiError) setApiError('');
                       }}
                       placeholder="your@email.com"
                       required
-                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:border-brand-accent ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-brand-border focus:ring-brand-accent'}`}
+                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:border-brand-accent ${emailError || apiError ? 'border-red-500 focus:ring-red-500' : 'border-brand-border focus:ring-brand-accent'}`}
                   />
                   {emailError && <p className="text-red-400 text-sm mt-1">{emailError}</p>}
                 </div>
+
+                {apiError && (
+                    <div className="mt-4 text-center text-sm text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/30">
+                        {apiError}
+                    </div>
+                )}
               </div>
               <div className="bg-gray-900/50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-start sm:items-center sm:space-x-4 rounded-b-lg">
                 <motion.button 
