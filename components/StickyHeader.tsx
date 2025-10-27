@@ -1,6 +1,7 @@
-
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'disabled';
 
 interface StickyHeaderProps {
     isUnlocked: boolean;
@@ -11,8 +12,12 @@ interface StickyHeaderProps {
     onAddRootRole: () => void;
     onDeleteAll: () => void;
     onSignInClick: () => void;
+    autosaveStatus: AutosaveStatus;
+    onUndo: () => void;
+    canUndo: boolean;
 }
 
+// --- Icons ---
 const PlusIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -44,6 +49,90 @@ const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
+const UndoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+    </svg>
+);
+
+const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+);
+
+const NoSymbolIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+  </svg>
+);
+
+
+// --- Autosave Indicator Component ---
+interface AutosaveIndicatorProps {
+    status: AutosaveStatus;
+    onClick?: () => void;
+}
+
+const AutosaveIndicator: React.FC<AutosaveIndicatorProps> = ({ status, onClick }) => {
+    const statusConfig = {
+        saving: { Icon: ArrowPathIcon, text: 'Saving...', color: 'text-gray-400' },
+        saved: { Icon: CheckCircleIcon, text: 'All changes saved', color: 'text-gray-400' },
+        disabled: { Icon: NoSymbolIcon, text: 'Autosave off', color: 'text-gray-400' },
+        idle: { Icon: () => null, text: '', color: '' }
+    };
+
+    const currentStatus = statusConfig[status];
+    if (status === 'idle') return <div className="w-48 h-5" />; // Reserve space
+
+    const motionProps = {
+        key: status,
+        initial: { opacity: 0, y: -5 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: 5 },
+        transition: { duration: 0.3 }
+    };
+
+    const content = (
+        <>
+            {status === 'saving' ? (
+                <motion.div animate={{ rotate: -360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                    <currentStatus.Icon className="w-4 h-4" />
+                </motion.div>
+            ) : (
+                <currentStatus.Icon className="w-4 h-4 flex-shrink-0" />
+            )}
+            <span className="font-semibold">{currentStatus.text}</span>
+        </>
+    );
+
+    return (
+        <div className="w-48 h-5 flex justify-end items-center">
+            <AnimatePresence mode="wait">
+                {status === 'disabled' ? (
+                    <motion.button
+                        {...motionProps}
+                        onClick={onClick}
+                        className={`flex items-center space-x-2 text-sm ${currentStatus.color} transition-opacity hover:opacity-80 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent`}
+                        aria-label="Autosave is off. Click to sign in and enable."
+                    >
+                        {content}
+                    </motion.button>
+                ) : (
+                    <motion.div
+                        {...motionProps}
+                        className={`flex items-center space-x-2 text-sm ${currentStatus.color}`}
+                    >
+                        {content}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+
+// --- Sticky Header Component ---
 const StickyHeader: React.FC<StickyHeaderProps> = ({
     isUnlocked,
     isActionMenuOpen,
@@ -53,6 +142,9 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
     onAddRootRole,
     onDeleteAll,
     onSignInClick,
+    autosaveStatus,
+    onUndo,
+    canUndo
 }) => {
     const actionMenuRef = useRef<HTMLDivElement>(null);
 
@@ -78,10 +170,15 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
-                    <div className="font-parkinsans text-xl">
-                        <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
+                    <div className="flex items-center">
+                        <div className="font-parkinsans text-xl">
+                            <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
+                        </div>
                     </div>
-                    <div className="flex items-center space-x-4">
+
+                    <div className="flex items-center justify-end space-x-4">
+                        <AutosaveIndicator status={autosaveStatus} onClick={onSignInClick} />
+                        
                         <div className="relative" ref={actionMenuRef}>
                             <motion.button
                                 onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
@@ -90,7 +187,9 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
                                 whileTap={{ scale: 0.95 }}
                             >
                                 Actions
-                                <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
+                                <motion.div animate={{ rotate: isActionMenuOpen ? 180 : 0 }}>
+                                    <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
+                                </motion.div>
                             </motion.button>
                             <AnimatePresence>
                                 {isActionMenuOpen && (
@@ -102,6 +201,11 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
                                         transition={{ duration: 0.15 }}
                                     >
                                         <div className="py-1" role="menu" aria-orientation="vertical">
+                                            <button onClick={onUndo} disabled={!canUndo} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem">
+                                                <UndoIcon className="w-4 h-4 mr-3 text-gray-400" />
+                                                Undo Last Action
+                                            </button>
+                                            <div className="border-t border-brand-border my-1"></div>
                                             <button onClick={onExportClick} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white" role="menuitem">
                                                 <ArrowUpTrayIcon className="w-4 h-4 mr-3 text-gray-400" />
                                                 Export & Share

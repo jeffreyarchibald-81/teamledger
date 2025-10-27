@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Position, PositionUpdate } from '../types';
@@ -52,6 +53,10 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
 
 
   const handleEdit = (pos: Position, field: EditableField) => {
+    const isNonBillable = pos.roleType === 'nonBillable';
+    const isRateOrUtil = field === 'rate' || field === 'utilization';
+    if (isNonBillable && isRateOrUtil) return;
+
     setEditingCell({ id: pos.id, field });
     setEditValue(String(pos[field]));
   };
@@ -67,12 +72,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
     
     if (position[field] !== newValue) {
         const updatePayload: PositionUpdate = {
-            id: position.id,
-            role: position.role,
-            salary: position.salary,
-            rate: position.rate,
-            utilization: position.utilization,
-            managerId: position.managerId,
+            ...position,
             [field]: newValue,
         };
       onUpdatePosition(updatePayload);
@@ -121,6 +121,13 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
   ];
   
   const renderCell = (pos: Position, field: EditableField, displayValue: string) => {
+    const isNonBillable = pos.roleType === 'nonBillable';
+    const isRateOrUtil = field === 'rate' || field === 'utilization';
+
+    if (isNonBillable && isRateOrUtil) {
+        return <div className="text-gray-500 px-2 py-1">—</div>;
+    }
+    
     if (editingCell?.id === pos.id && editingCell?.field === field) {
         return (
             <input
@@ -277,7 +284,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
                 whileTap={{ scale: 0.95 }}
             >
                 <SparklesIcon className="w-5 h-5 mr-2 flex-shrink-0" />
-                <span className="text-center">Unlock Full Financials, Exporting & AI Insights</span>
+                <span className="text-center">Unlock Full Financials & All Features</span>
             </motion.button>
         </div>
       )}

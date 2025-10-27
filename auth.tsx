@@ -34,10 +34,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const unlockApp = async (email: string) => {
     // This function now automatically handles the difference between your
     // local development environment and your live production website.
-    // `process.env.NODE_ENV` is a standard variable that is 'development'
-    // when you're testing locally and 'production' on a live site.
+    // We check the hostname to determine if we are in production.
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 
-    if (process.env.NODE_ENV === 'production') {
+    if (isProduction) {
       // --- PRODUCTION LOGIC ---
       // This code will ONLY run on your live website.
       // NOTE: For advanced email validation (preventing fake emails), a paid

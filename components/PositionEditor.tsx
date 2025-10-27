@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 // FIX: import Variants to fix framer-motion type error
 import { motion, Variants } from 'framer-motion';
@@ -19,6 +20,7 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
   const [rate, setRate] = useState('');
   const [utilization, setUtilization] = useState('');
   const [managerId, setManagerId] = useState<string | null>(null);
+  const [roleType, setRoleType] = useState<'billable' | 'nonBillable'>('billable');
 
   useEffect(() => {
     if (existingPosition) {
@@ -27,29 +29,41 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
       setRate(String(existingPosition.rate));
       setUtilization(String(existingPosition.utilization));
       setManagerId(existingPosition.managerId);
+      setRoleType(existingPosition.roleType || 'billable');
     } else if (duplicateSource) {
       setRole(duplicateSource.role);
       setSalary(String(duplicateSource.salary));
       setRate(String(duplicateSource.rate));
       setUtilization(String(duplicateSource.utilization));
       setManagerId(duplicateSource.managerId);
+      setRoleType(duplicateSource.roleType || 'billable');
     } else {
       setRole('');
       setSalary('');
       setRate('');
       setUtilization('');
       setManagerId(parentId || null);
+      setRoleType('billable');
     }
   }, [existingPosition, parentId, duplicateSource]);
   
+  useEffect(() => {
+    if (roleType === 'nonBillable') {
+        setRate('0');
+        setUtilization('0');
+    }
+  }, [roleType]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const isNonBillable = roleType === 'nonBillable';
     const positionData = {
       role,
       salary: parseFloat(salary) || 0,
-      rate: parseFloat(rate) || 0,
-      utilization: parseFloat(utilization) || 0,
+      rate: isNonBillable ? 0 : parseFloat(rate) || 0,
+      utilization: isNonBillable ? 0 : parseFloat(utilization) || 0,
       managerId,
+      roleType,
     };
 
     if (existingPosition) {
@@ -89,9 +103,23 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
             <h2 className="text-2xl font-bold text-white mb-6">{existingPosition ? 'Edit Position' : 'Add New Position'}</h2>
             <div className="space-y-4">
               <InputField label="Role Title" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g., Senior Developer" required />
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Role Type</label>
+                <div className="flex rounded-lg bg-gray-900 border border-brand-border p-1">
+                  <button type="button" onClick={() => setRoleType('billable')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roleType === 'billable' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
+                    Billable
+                  </button>
+                  <button type="button" onClick={() => setRoleType('nonBillable')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roleType === 'nonBillable' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
+                    Non-Billable
+                  </button>
+                </div>
+              </div>
+
               <InputField label="Salary ($)" type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="e.g., 90000" required />
-              <InputField label="Billable Rate ($/hr)" type="number" value={rate} onChange={e => setRate(e.target.value)} placeholder="e.g., 175" />
-              <InputField label="Utilization (%)" type="number" value={utilization} onChange={e => setUtilization(e.target.value)} placeholder="e.g., 75" />
+              <InputField label="Billable Rate ($/hr)" type="number" value={rate} onChange={e => setRate(e.target.value)} placeholder="e.g., 175" disabled={roleType === 'nonBillable'} />
+              <InputField label="Utilization (%)" type="number" value={utilization} onChange={e => setUtilization(e.target.value)} placeholder="e.g., 75" disabled={roleType === 'nonBillable'} />
+              
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Manager</label>
                 <select
@@ -126,7 +154,7 @@ const InputField: React.FC<InputFieldProps> = ({ label, ...props }) => (
         <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
         <input
             {...props}
-            className="w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
+            className={`w-full border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent transition-colors ${props.disabled ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-900'}`}
         />
     </div>
 );

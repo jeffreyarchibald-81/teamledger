@@ -27,6 +27,7 @@ const PositionCard: React.FC<PositionCardProps> = ({ position, onAddSubordinate,
         <div className="flex-grow">
           <h3 className="text-sm font-bold text-white text-left">{position.role}</h3>
           <div className="text-xs text-gray-300 mt-1 text-left space-y-1">
+            {position.roleType === 'nonBillable' && <span className="text-[10px] font-bold tracking-wider text-gray-400 block mb-1">NON-BILLABLE</span>}
             <p>Salary: <span className="font-semibold text-gray-300">{formatCurrency(position.salary)}</span></p>
             <p>Profit: <span className={`font-semibold ${marginColor}`}>{formatCurrency(position.profit)}</span></p>
             <p>Margin: <span className={`font-semibold ${marginColor}`}>{position.margin.toFixed(0)}%</span></p>

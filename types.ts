@@ -4,6 +4,7 @@ export interface Position {
   id: string;
   role: string;
   managerId: string | null;
+  roleType: 'billable' | 'nonBillable';
 
   // User Inputs
   salary: number;
