@@ -747,7 +747,9 @@ const App: React.FC = () => {
             <div ref={logoRef} className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
                 <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
             </div>
-            <h1 className="font-bold text-white max-w-4xl mx-auto text-4xl sm:text-5xl lg:text-[3.35rem] leading-[1.15] sm:leading-[1.15]">A smarter organizational structure chart maker that helps you grow your business with confidence.</h1>
+            <h1 className="font-bold text-white max-w-4xl mx-auto text-4xl sm:text-5xl lg:text-[3.35rem] leading-[1.15] sm:leading-[1.15]">
+              Plan your growth confidently with a smarter organizational structure chart maker.
+            </h1>
             <p className="text-gray-300 mt-4 max-w-3xl mx-auto" style={{ fontSize: '1.15rem' }}>
                 TeamLedger is a free org chart and financial forecasting tool that combines team structure and financial data. Model your growth, see the impact of every role, and get AI-powered insights to operate with confidence.
             </p>
