@@ -58,7 +58,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    * to differentiate between the production environment and local development.
    */
   const unlockApp = async (email: string): Promise<{ success: boolean; message?: string }> => {
-    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    // More specific production check. Only the live domain is considered production.
+    const isProduction = window.location.hostname === 'teamledger.app';
 
     if (isProduction) {
       // --- PRODUCTION LOGIC ---
