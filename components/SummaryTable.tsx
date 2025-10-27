@@ -276,7 +276,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
         )}
       </table>
       {!isUnlocked && (
-        <div className="absolute inset-x-0 bottom-0 h-24 flex items-center justify-center p-4">
+        <div className="absolute inset-x-0 bottom-0 h-20 flex items-center justify-center p-4">
             <motion.button
                 onClick={onUnlockRequest}
                 className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center shadow-soft-glow-lg text-center"
