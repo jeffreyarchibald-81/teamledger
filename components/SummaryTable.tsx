@@ -146,11 +146,11 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
 
   return (
     <div className="overflow-x-auto bg-brand-surface rounded-lg shadow-soft-glow border border-brand-border relative">
-      <table className="min-w-full text-sm text-left text-gray-300">
+      <table className="w-full text-sm text-left text-gray-300">
         <thead className="text-xs text-gray-400 uppercase bg-black">
           <tr>
             {headers.map(header => (
-              <th key={header} scope="col" className="px-6 py-3 whitespace-nowrap tracking-wider">{header}</th>
+              <th key={header} scope="col" className="px-4 py-3 tracking-wider">{header}</th>
             ))}
           </tr>
         </thead>
@@ -166,16 +166,16 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
-              <td className="px-6 py-4 font-medium text-white whitespace-nowrap">{renderCell(pos, 'role', pos.role)}</td>
-              <td className="px-6 py-4">{renderCell(pos, 'salary', formatCurrency(pos.salary))}</td>
-              <td className="px-6 py-4 text-gray-400">{formatCurrency(pos.totalSalary)}</td>
-              <td className="px-6 py-4 text-gray-400">{formatCurrency(pos.overheadCost)}</td>
-              <td className="px-6 py-4">{renderCell(pos, 'rate', formatCurrency(pos.rate))}</td>
-              <td className="px-6 py-4">{renderCell(pos, 'utilization', formatPercent(pos.utilization))}</td>
-              <td className="px-6 py-4 text-gray-400">{formatCurrency(pos.revenue)}</td>
-              <td className={`px-6 py-4 font-semibold ${pos.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(pos.profit)}</td>
-              <td className={`px-6 py-4 font-semibold ${pos.margin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(pos.margin)}</td>
-              <td className="px-6 py-4 text-center">
+              <td className="px-4 py-4 font-medium text-white">{renderCell(pos, 'role', pos.role)}</td>
+              <td className="px-4 py-4">{renderCell(pos, 'salary', formatCurrency(pos.salary))}</td>
+              <td className="px-4 py-4 text-gray-400">{formatCurrency(pos.totalSalary)}</td>
+              <td className="px-4 py-4 text-gray-400">{formatCurrency(pos.overheadCost)}</td>
+              <td className="px-4 py-4">{renderCell(pos, 'rate', formatCurrency(pos.rate))}</td>
+              <td className="px-4 py-4">{renderCell(pos, 'utilization', formatPercent(pos.utilization))}</td>
+              <td className="px-4 py-4 text-gray-400">{formatCurrency(pos.revenue)}</td>
+              <td className={`px-4 py-4 font-semibold ${pos.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(pos.profit)}</td>
+              <td className={`px-4 py-4 font-semibold ${pos.margin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(pos.margin)}</td>
+              <td className="px-4 py-4 text-center">
                 <div className="relative inline-block text-left">
                     <button onClick={() => setActiveMenu(activeMenu === pos.id ? null : pos.id)} className="p-2 rounded-full hover:bg-gray-700 transition-colors">
                         <EllipsisVerticalIcon className="w-5 h-5" />
@@ -215,55 +215,55 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
         {isUnlocked ? (
             <tfoot className="font-bold text-white bg-black/50">
                 <tr>
-                    <td className="px-6 py-4 align-bottom">Totals</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 align-bottom">Totals</td>
+                    <td className="px-4 py-4">
                         <div className="text-xs font-normal text-gray-300 mb-1">Salary</div>
                         <div>{formatCurrency(totals.salary)}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                         <div className="text-xs font-normal text-gray-300 mb-1">Total Salary</div>
                         <div>{formatCurrency(totals.totalSalary)}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                         <div className="text-xs font-normal text-gray-300 mb-1">Overhead Cost</div>
                         <div>{formatCurrency(totals.overheadCost)}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                         <div className="text-xs font-normal text-gray-300 mb-1">Avg. Rate</div>
                         <div>{formatCurrency(totals.avgRate)}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                         <div className="text-xs font-normal text-gray-300 mb-1">Avg. Utilization</div>
                         <div>{formatPercent(totals.avgUtilization)}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                         <div className="text-xs font-normal text-gray-300 mb-1">Revenue</div>
                         <div>{formatCurrency(totals.revenue)}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                         <div className="text-xs font-normal text-gray-300 mb-1">Profit</div>
                         <div className={`${totals.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totals.profit)}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                         <div className="text-xs font-normal text-gray-300 mb-1">Margin</div>
                         <div className={`${totals.totalMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(totals.totalMargin)}</div>
                     </td>
-                    <td className="px-6 py-4"></td>
+                    <td className="px-4 py-4"></td>
                 </tr>
             </tfoot>
         ) : (
             <tfoot className="font-bold text-white bg-black/50">
                 <tr className="blur-md select-none pointer-events-none">
-                    <td className="px-6 py-4 align-bottom">Totals</td>
-                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Salary</div><div>$1,800,000</div></td>
-                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Total Salary</div><div>$2,340,000</div></td>
-                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Overhead Cost</div><div>$351,000</div></td>
-                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Avg. Rate</div><div>$250</div></td>
-                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Avg. Utilization</div><div>76%</div></td>
-                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Revenue</div><div>$3,561,900</div></td>
-                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Profit</div><div className="text-green-400">$870,900</div></td>
-                    <td className="px-6 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Margin</div><div className="text-green-400">24%</div></td>
-                    <td className="px-6 py-4"></td>
+                    <td className="px-4 py-4 align-bottom">Totals</td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Salary</div><div>$1,800,000</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Total Salary</div><div>$2,340,000</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Overhead Cost</div><div>$351,000</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Avg. Rate</div><div>$250</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Avg. Utilization</div><div>76%</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Revenue</div><div>$3,561,900</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Profit</div><div className="text-green-400">$870,900</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-400 mb-1">Margin</div><div className="text-green-400">24%</div></td>
+                    <td className="px-4 py-4"></td>
                 </tr>
             </tfoot>
         )}
