@@ -5,16 +5,31 @@ import React, { useState, useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { Position, PositionInput, PositionUpdate } from '../types';
 
+/**
+ * @interface PositionEditorProps
+ * @description Defines the props for the PositionEditor modal component.
+ */
 interface PositionEditorProps {
+  /** Callback function to close the modal without saving. */
   onClose: () => void;
+  /** Callback function to save the new or updated position data. */
   onSave: (position: PositionInput | PositionUpdate) => void;
+  /** The position object to be edited. If null, the modal is in "add new" mode. */
   existingPosition: Position | null;
+  /** The full list of positions, used to populate the manager dropdown. */
   positions: Position[];
+  /** The ID of the parent position when creating a new subordinate role. */
   parentId?: string | null;
+  /** The position object to use as a template when duplicating a role. */
   duplicateSource?: Position | null;
 }
 
+/**
+ * @description A modal form component for creating, editing, and duplicating positions.
+ * It handles all form state and logic internally.
+ */
 const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existingPosition, positions, parentId, duplicateSource }) => {
+  // State for each form field.
   const [role, setRole] = useState('');
   const [salary, setSalary] = useState('');
   const [rate, setRate] = useState('');
@@ -22,22 +37,26 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
   const [managerId, setManagerId] = useState<string | null>(null);
   const [roleType, setRoleType] = useState<'billable' | 'nonBillable'>('billable');
 
+  /**
+   * Effect to populate the form fields based on the current mode (edit, duplicate, or create new).
+   * This runs whenever the component opens or its mode changes.
+   */
   useEffect(() => {
-    if (existingPosition) {
+    if (existingPosition) { // Editing existing position
       setRole(existingPosition.role);
       setSalary(String(existingPosition.salary));
       setRate(String(existingPosition.rate));
       setUtilization(String(existingPosition.utilization));
       setManagerId(existingPosition.managerId);
       setRoleType(existingPosition.roleType || 'billable');
-    } else if (duplicateSource) {
+    } else if (duplicateSource) { // Duplicating a position
       setRole(duplicateSource.role);
       setSalary(String(duplicateSource.salary));
       setRate(String(duplicateSource.rate));
       setUtilization(String(duplicateSource.utilization));
       setManagerId(duplicateSource.managerId);
       setRoleType(duplicateSource.roleType || 'billable');
-    } else {
+    } else { // Creating a new position
       setRole('');
       setSalary('');
       setRate('');
@@ -47,6 +66,9 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
     }
   }, [existingPosition, parentId, duplicateSource]);
   
+  /**
+   * Effect to automatically reset rate and utilization when a role is set to "non-billable".
+   */
   useEffect(() => {
     if (roleType === 'nonBillable') {
         setRate('0');
@@ -54,6 +76,9 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
     }
   }, [roleType]);
 
+  /**
+   * Handles form submission, packages the form data, and calls the onSave callback.
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const isNonBillable = roleType === 'nonBillable';
@@ -73,13 +98,11 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
     }
   };
 
+  // Filter the list of available managers to prevent a position from being its own manager.
   const availableManagers = positions.filter(p => p.id !== existingPosition?.id);
 
-  const backdropVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1 }
-  };
-  // FIX: Add Variants type to fix framer-motion type error
+  // Animation variants for the modal and backdrop.
+  const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
   const modalVariants: Variants = {
     hidden: { opacity: 0, y: 30, scale: 0.95 },
     visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
@@ -89,10 +112,7 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
   return (
     <motion.div 
         className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
-        variants={backdropVariants}
-        initial="hidden"
-        animate="visible"
-        exit="hidden"
+        variants={backdropVariants} initial="hidden" animate="visible" exit="hidden"
     >
       <motion.div 
         className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-md"
@@ -145,10 +165,18 @@ const PositionEditor: React.FC<PositionEditorProps> = ({ onClose, onSave, existi
   );
 };
 
+/**
+ * @interface InputFieldProps
+ * @description Defines props for the reusable InputField component.
+ */
 interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+    /** The label text to display above the input field. */
     label: string;
 }
 
+/**
+ * @description A reusable, styled text input component with a label.
+ */
 const InputField: React.FC<InputFieldProps> = ({ label, ...props }) => (
     <div>
         <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>

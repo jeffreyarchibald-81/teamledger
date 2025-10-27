@@ -11,6 +11,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
+    {/* AuthProvider wraps the entire application to provide authentication state (isUnlocked) 
+        and the unlock function to all child components. */}
     <AuthProvider>
       <App />
     </AuthProvider>

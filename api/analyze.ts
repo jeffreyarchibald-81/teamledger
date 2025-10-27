@@ -2,9 +2,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
 
-// This is the Vercel serverless function handler, updated for the Node.js runtime.
+/**
+ * @description A Vercel serverless function that acts as a secure backend endpoint
+ * to interact with the Google Gemini API. It receives organizational data from the client,
+ * constructs a detailed prompt, and requests an analysis from the AI model, returning
+ * the structured JSON response.
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Only allow POST requests
+    // Security: Only allow POST requests to this endpoint.
     if (req.method !== 'POST') {
         res.setHeader('Allow', ['POST']);
         return res.status(405).json({ error: 'Method not allowed' });
@@ -13,12 +18,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const { dataForAnalysis } = req.body;
 
-        // Ensure the necessary data is present in the request
+        // Input validation: Ensure the request body contains the necessary data.
         if (!dataForAnalysis) {
             return res.status(400).json({ error: 'Missing dataForAnalysis in request body' });
         }
         
-        // Securely access the API key from environment variables on the server
+        // Securely access the API key from environment variables configured on the Vercel server.
+        // This key is NOT exposed to the client-side.
         const apiKey = process.env.API_KEY;
         if (!apiKey) {
              return res.status(500).json({ error: 'API key not configured on server' });
@@ -26,6 +32,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         const ai = new GoogleGenAI({ apiKey });
 
+        // --- Prompt Engineering ---
+        // This prompt is carefully crafted to guide the AI model's response.
+        // It provides context, rules, and a desired output format (JSON schema).
         const prompt = `
             You are an expert business consultant specializing in organizational structure for service-based businesses.
             Analyze the following organizational structure and financial data.
@@ -51,10 +60,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ${JSON.stringify(dataForAnalysis, null, 2)}
         `;
 
+        // Make the API call to the Gemini model.
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
+                // Enforce a JSON response that matches the defined schema.
                 responseMimeType: 'application/json',
                 responseSchema: {
                     type: Type.OBJECT,
@@ -80,11 +91,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         });
         
-        // Send the successful JSON response from the AI
-        res.setHeader('Content-Type', 'application/json');
-        return res.status(200).send(response.text);
+        // The AI returns a JSON string. Parse it before sending.
+        const analysisResult = JSON.parse(response.text);
+
+        // Use res.json() to ensure proper headers and stringification. This is more robust
+        // and fixes the hanging issue in the Vercel development environment.
+        return res.status(200).json(analysisResult);
 
     } catch (error) {
+        // Graceful error handling for API failures or other issues.
         console.error("AI analysis failed in serverless function:", error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
         return res.status(500).json({ error: 'Internal Server Error', details: errorMessage });

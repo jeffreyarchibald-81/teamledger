@@ -4,39 +4,97 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Position, PositionUpdate } from '../types';
 
+/**
+ * @description Formats a number as a USD currency string.
+ * @param {number} value The number to format.
+ * @returns {string} The formatted currency string (e.g., "$1,234,567").
+ */
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(value);
 };
 
+/**
+ * @description Formats a number as a percentage string.
+ * @param {number} value The number to format (e.g., 85.5).
+ * @returns {string} The formatted percentage string (e.g., "86%").
+ */
 const formatPercent = (value: number) => {
     return `${value.toFixed(0)}%`;
 };
 
+/** Defines the fields that are editable directly within the summary table. */
 type EditableField = 'role' | 'salary' | 'rate' | 'utilization';
 
+/**
+ * @interface SummaryTableProps
+ * @description Defines the props for the SummaryTable component.
+ */
 interface SummaryTableProps {
+    /** The array of all positions to display in the table. */
     positions: Position[];
+    /** Callback to update a position's data. */
     onUpdatePosition: (positionUpdate: PositionUpdate) => void;
+    /** Callback to open the editor to add a subordinate. */
     onAddSubordinate: (managerId: string) => void;
+    /** Callback to open the editor to edit a position. */
     onEdit: (position: Position) => void;
+    /** Callback to duplicate a position. */
     onDuplicate: (position: Position) => void;
+    /** Callback to delete a position. */
     onDelete: (id: string) => void;
+    /** Flag indicating if premium features are unlocked. */
     isUnlocked: boolean;
+    /** Callback to trigger the unlock modal. */
     onUnlockRequest: () => void;
 }
 
+// --- Icon Components ---
 const SparklesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
     </svg>
 );
+const EllipsisVerticalIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+    </svg>
+);
+const UserPlusIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3.375 19.5h17.25a2.25 2.25 0 0 0 2.25-2.25v-1.5a2.25 2.25 0 0 0-2.25-2.25H3.375a2.25 2.25 0 0 0-2.25 2.25v1.5a2.25 2.25 0 0 0 2.25 2.25Z" />
+    </svg>
+);
+const PencilIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+    </svg>
+);
+const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
+);
+const DocumentDuplicateIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5 .124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m9.75 11.375c.621 0 1.125-.504 1.125-1.125v-9.25a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+    </svg>
+);
 
+
+/**
+ * @description Renders a comprehensive table summarizing all financial data for every position.
+ * It features in-line editing for key fields and provides access to actions for each role.
+ * A totals row, which is a premium feature, is displayed at the bottom.
+ */
 const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition, onAddSubordinate, onEdit, onDuplicate, onDelete, isUnlocked, onUnlockRequest }) => {
+  // State to manage which cell is currently being edited in-line.
   const [editingCell, setEditingCell] = useState<{ id: string; field: EditableField } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  // State to control the visibility of the actions dropdown menu for each row.
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  /** Effect to handle closing the actions menu when clicking outside of it. */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -46,21 +104,19 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
     if (activeMenu) {
         document.addEventListener('mousedown', handleClickOutside);
     }
-    return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeMenu]);
 
-
+  /** Puts a cell into edit mode. */
   const handleEdit = (pos: Position, field: EditableField) => {
-    const isNonBillable = pos.roleType === 'nonBillable';
-    const isRateOrUtil = field === 'rate' || field === 'utilization';
-    if (isNonBillable && isRateOrUtil) return;
+    // Prevent editing of rate/utilization for non-billable roles.
+    if (pos.roleType === 'nonBillable' && (field === 'rate' || field === 'utilization')) return;
 
     setEditingCell({ id: pos.id, field });
     setEditValue(String(pos[field]));
   };
 
+  /** Saves the value from the in-line editor and exits edit mode. */
   const handleSave = () => {
     if (!editingCell) return;
     
@@ -70,28 +126,23 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
   
     const newValue = field === 'role' ? editValue : parseFloat(editValue) || 0;
     
+    // Only call the update function if the value has actually changed.
     if (position[field] !== newValue) {
-        const updatePayload: PositionUpdate = {
-            ...position,
-            [field]: newValue,
-        };
-      onUpdatePosition(updatePayload);
+        const updatePayload: PositionUpdate = { ...position, [field]: newValue };
+        onUpdatePosition(updatePayload);
     }
   
     setEditingCell(null);
     setEditValue('');
   };
 
+  /** Handles keyboard events for the in-line editor (Enter to save, Escape to cancel). */
   const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-          handleSave();
-      }
-      if (e.key === 'Escape') {
-          setEditingCell(null);
-          setEditValue('');
-      }
+      if (e.key === 'Enter') handleSave();
+      if (e.key === 'Escape') setEditingCell(null);
   }
 
+  /** Memoized calculation of the totals row to avoid re-computing on every render. */
   const totals = useMemo(() => {
     const total = positions.reduce((acc, pos) => {
       acc.salary += pos.salary;
@@ -102,29 +153,22 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
       return acc;
     }, { salary: 0, totalSalary: 0, overheadCost: 0, revenue: 0, profit: 0 });
 
-    const totalPotentialRevenue = positions
-        .filter(p => p.rate > 0)
-        .reduce((acc, p) => acc + (p.rate * 1540), 0);
-    
     const billablePositions = positions.filter(p => p.rate > 0);
+    const totalPotentialRevenue = billablePositions.reduce((acc, p) => acc + (p.rate * 1540), 0); // Assuming 1540 billable hours/year
     const totalRate = billablePositions.reduce((acc, p) => acc + p.rate, 0);
-    const avgRate = billablePositions.length > 0 ? totalRate / billablePositions.length : 0;
     
+    const avgRate = billablePositions.length > 0 ? totalRate / billablePositions.length : 0;
     const avgUtilization = totalPotentialRevenue > 0 ? (total.revenue / totalPotentialRevenue) * 100 : 0;
     const totalMargin = total.revenue > 0 ? (total.profit / total.revenue) * 100 : 0;
 
     return { ...total, avgUtilization, totalMargin, avgRate };
   }, [positions]);
 
-  const headers = [
-    'Role', 'Salary', 'Total Salary', 'Overhead Cost', 'Rate', 'Utilization', 'Revenue', 'Profit', 'Margin', 'Actions'
-  ];
+  const headers = ['Role', 'Salary', 'Total Salary', 'Overhead Cost', 'Rate', 'Utilization', 'Revenue', 'Profit', 'Margin', 'Actions'];
   
+  /** Renders a table cell, making it an input field if it's in edit mode. */
   const renderCell = (pos: Position, field: EditableField, displayValue: string) => {
-    const isNonBillable = pos.roleType === 'nonBillable';
-    const isRateOrUtil = field === 'rate' || field === 'utilization';
-
-    if (isNonBillable && isRateOrUtil) {
+    if (pos.roleType === 'nonBillable' && (field === 'rate' || field === 'utilization')) {
         return <div className="text-gray-500 px-2 py-1">—</div>;
     }
     
@@ -144,6 +188,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
     return <div onClick={() => handleEdit(pos, field)} className="cursor-pointer h-full w-full border-b border-dashed border-brand-accent/40 hover:border-white transition-colors duration-200">{displayValue}</div>;
   };
 
+  /** Defines the items for the actions dropdown menu. */
   const menuItems = (pos: Position) => [
       { label: 'Add Report', icon: UserPlusIcon, action: () => onAddSubordinate(pos.id) },
       { label: 'Edit', icon: PencilIcon, action: () => onEdit(pos) },
@@ -156,21 +201,15 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
       <table className="w-full text-sm text-left text-gray-300">
         <thead className="text-xs text-gray-400 uppercase bg-black">
           <tr>
-            {headers.map(header => (
-              <th key={header} scope="col" className="px-4 py-3 tracking-wider">{header}</th>
-            ))}
+            {headers.map(header => <th key={header} scope="col" className="px-4 py-3 tracking-wider">{header}</th>)}
           </tr>
         </thead>
         <motion.tbody>
           <AnimatePresence>
           {positions.map(pos => (
             <motion.tr 
-                key={pos.id} 
-                className="bg-brand-surface border-b border-brand-border hover:bg-gray-800/20 transition-colors"
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, x: -20 }}
+                key={pos.id} className="bg-brand-surface border-b border-brand-border hover:bg-gray-800/20 transition-colors"
+                layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
               <td className="px-4 py-4 font-medium text-white">{renderCell(pos, 'role', pos.role)}</td>
@@ -192,16 +231,12 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
                             <motion.div 
                                 ref={menuRef} 
                                 className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-10"
-                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                transition={{ duration: 0.15 }}
+                                initial={{ opacity: 0, scale: 0.95, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -10 }} transition={{ duration: 0.15 }}
                             >
-                                <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                <div className="py-1" role="menu" aria-orientation="vertical">
                                     {menuItems(pos).map(item => (
-                                        <button
-                                            key={item.label}
-                                            onClick={() => { item.action(); setActiveMenu(null); }}
+                                        <button key={item.label} onClick={() => { item.action(); setActiveMenu(null); }}
                                             className={`w-full text-left flex items-center px-4 py-2 text-sm ${item.isDestructive ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}`}
                                             role="menuitem"
                                         >
@@ -219,46 +254,24 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
           ))}
           </AnimatePresence>
         </motion.tbody>
+        {/* The table footer conditionally renders based on the `isUnlocked` state. */}
         {isUnlocked ? (
             <tfoot className="font-bold text-white bg-black/50">
                 <tr>
                     <td className="px-4 py-4 align-bottom">Totals</td>
-                    <td className="px-4 py-4">
-                        <div className="text-xs font-normal text-gray-300 mb-1">Salary</div>
-                        <div>{formatCurrency(totals.salary)}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                        <div className="text-xs font-normal text-gray-300 mb-1">Total Salary</div>
-                        <div>{formatCurrency(totals.totalSalary)}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                        <div className="text-xs font-normal text-gray-300 mb-1">Overhead Cost</div>
-                        <div>{formatCurrency(totals.overheadCost)}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                        <div className="text-xs font-normal text-gray-300 mb-1">Avg. Rate</div>
-                        <div>{formatCurrency(totals.avgRate)}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                        <div className="text-xs font-normal text-gray-300 mb-1">Avg. Utilization</div>
-                        <div>{formatPercent(totals.avgUtilization)}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                        <div className="text-xs font-normal text-gray-300 mb-1">Revenue</div>
-                        <div>{formatCurrency(totals.revenue)}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                        <div className="text-xs font-normal text-gray-300 mb-1">Profit</div>
-                        <div className={`${totals.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totals.profit)}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                        <div className="text-xs font-normal text-gray-300 mb-1">Margin</div>
-                        <div className={`${totals.totalMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(totals.totalMargin)}</div>
-                    </td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-300 mb-1">Salary</div><div>{formatCurrency(totals.salary)}</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-300 mb-1">Total Salary</div><div>{formatCurrency(totals.totalSalary)}</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-300 mb-1">Overhead Cost</div><div>{formatCurrency(totals.overheadCost)}</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-300 mb-1">Avg. Rate</div><div>{formatCurrency(totals.avgRate)}</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-300 mb-1">Avg. Utilization</div><div>{formatPercent(totals.avgUtilization)}</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-300 mb-1">Revenue</div><div>{formatCurrency(totals.revenue)}</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-300 mb-1">Profit</div><div className={`${totals.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totals.profit)}</div></td>
+                    <td className="px-4 py-4"><div className="text-xs font-normal text-gray-300 mb-1">Margin</div><div className={`${totals.totalMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPercent(totals.totalMargin)}</div></td>
                     <td className="px-4 py-4"></td>
                 </tr>
             </tfoot>
         ) : (
+            // A blurred, non-interactive version of the totals is shown to non-unlocked users.
             <tfoot className="font-bold text-white bg-black/50">
                 <tr className="blur-md select-none pointer-events-none">
                     <td className="px-4 py-4 align-bottom">Totals</td>
@@ -275,6 +288,7 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
             </tfoot>
         )}
       </table>
+      {/* A call-to-action overlay appears at the bottom if the user has not unlocked the app. */}
       {!isUnlocked && (
         <div className="absolute inset-x-0 bottom-0 h-20 flex items-center justify-center p-4">
             <motion.button
@@ -291,40 +305,5 @@ const SummaryTable: React.FC<SummaryTableProps> = ({ positions, onUpdatePosition
     </div>
   );
 };
-
-const EllipsisVerticalIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-// FIX: Removed duplicate `fill` and `viewBox` attributes.
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
-    </svg>
-);
-const UserPlusIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-// FIX: Removed duplicate `fill` and `viewBox` attributes.
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3.375 19.5h17.25a2.25 2.25 0 0 0 2.25-2.25v-1.5a2.25 2.25 0 0 0-2.25-2.25H3.375a2.25 2.25 0 0 0-2.25 2.25v1.5a2.25 2.25 0 0 0 2.25 2.25Z" />
-    </svg>
-);
-
-const PencilIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-// FIX: Removed duplicate `fill` and `viewBox` attributes.
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-    </svg>
-);
-
-const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-// FIX: Removed duplicate `fill` and `viewBox` attributes.
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-    </svg>
-);
-
-const DocumentDuplicateIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-// FIX: Removed duplicate `fill` and `viewBox` attributes.
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5 .124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m9.75 11.375c.621 0 1.125-.504 1.125-1.125v-9.25a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
-    </svg>
-);
-
 
 export default SummaryTable;

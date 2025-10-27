@@ -14,11 +14,25 @@ import { useAuth } from './auth';
 import StickyHeader from './components/StickyHeader';
 import CookieConsent from './components/CookieConsent';
 import PrivacyPolicyModal from './components/PrivacyPolicyModal';
+import MobileNotice from './components/MobileNotice';
 
+// --- Local Storage Keys ---
+/** Key for storing the user's positions array in local storage. */
 const POSITIONS_STORAGE_KEY = 'teamledger-positions';
+/** Key for storing global financial settings in local storage. */
 const SETTINGS_STORAGE_KEY = 'teamledger-settings';
+/** Defines the maximum number of states to keep in the undo history. */
 const MAX_HISTORY_SIZE = 30;
 
+/**
+ * Calculates all financial metrics for a given position based on global settings.
+ * This is a pure function, central to the application's logic.
+ * @param positionInput An object containing the core inputs: salary, rate, and utilization.
+ * @param benefitsMultiplier A multiplier for salary to account for benefits, taxes, etc. (e.g., 1.3 for 30%).
+ * @param overheadMultiplier A multiplier for total salary to account for operational overhead (e.g., 0.15 for 15%).
+ * @param annualBillableHours The total number of billable hours in a year for a fully utilized employee.
+ * @returns An object with all calculated financial metrics.
+ */
 const calculateFinancials = (
   positionInput: { salary: number; rate: number; utilization: number; },
   benefitsMultiplier: number,
@@ -30,117 +44,117 @@ const calculateFinancials = (
   const totalCost = totalSalary + overheadCost;
   const revenue = positionInput.rate * (positionInput.utilization / 100) * annualBillableHours;
   const profit = revenue - totalCost;
+  // Calculate margin as a percentage. Handle cases with no revenue to avoid division by zero.
   const margin = revenue > 0 ? (profit / revenue) * 100 : (totalCost > 0 ? -100 : 0);
 
   return { totalSalary, overheadCost, totalCost, revenue, profit, margin };
 };
 
+// --- SVG Icon Components ---
+// These are simple, stateless functional components for rendering icons.
 const PlusIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
     </svg>
 );
-
 const InformationCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
   </svg>
 );
-
 const QuestionMarkCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
     </svg>
 );
-
 const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
   </svg>
 );
-
 const ArrowPathIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-2.22-1.01-4.22-2.63-5.63" />
     </svg>
 );
-
 const ArrowUpTrayIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
     </svg>
 );
-
 const DocumentArrowDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
     </svg>
 );
-
 const PhotoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
     </svg>
 );
-
 const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
     </svg>
 );
-
 const SparklesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
     </svg>
 );
-
 const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
     </svg>
 );
-
 const XIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
     </svg>
 );
 
-
+/**
+ * @description The main component for the TeamLedger application.
+ * Manages all application state, including positions, financial settings, UI state (modals, views),
+ * and handles all data manipulation logic (add, update, delete positions).
+ */
 const App: React.FC = () => {
+  // --- State Management ---
+  
+  // Authentication state from context. `isUnlocked` controls access to premium features.
   const { isUnlocked } = useAuth();
 
+  // Global financial settings. These are used in the `calculateFinancials` function.
   const [benefitsPercent, setBenefitsPercent] = useState(30);
   const [overheadPercent, setOverheadPercent] = useState(15);
   const [workWeekHours, setWorkWeekHours] = useState(35);
+
+  // Local state for debounced settings inputs to improve INP.
+  const [benefitsInput, setBenefitsInput] = useState(String(benefitsPercent));
+  const [overheadInput, setOverheadInput] = useState(String(overheadPercent));
+  const [workWeekHoursInput, setWorkWeekHoursInput] = useState(String(workWeekHours));
+  
+  // State for the "Global Overwrites" feature in settings.
   const [globalRate, setGlobalRate] = useState('');
   const [globalUtilization, setGlobalUtilization] = useState('');
+
+  // State for the undo functionality. Stores previous versions of the positions array.
   const [history, setHistory] = useState<Position[][]>([]);
   
-  const benefitsMultiplier = useMemo(() => 1 + benefitsPercent / 100, [benefitsPercent]);
-  const overheadMultiplier = useMemo(() => overheadPercent / 100, [overheadPercent]);
-  const annualBillableHours = useMemo(() => workWeekHours * 44, [workWeekHours]); // Assume 44 billable weeks per year
-
-  const saveStateForUndo = useCallback((currentState: Position[]) => {
-    setHistory(prev => {
-        const newHistory = [...prev, currentState];
-        if (newHistory.length > MAX_HISTORY_SIZE) {
-            return newHistory.slice(newHistory.length - MAX_HISTORY_SIZE);
-        }
-        return newHistory;
-    });
-  }, []);
-
+  // Core application data: the array of all positions.
+  // Initialized from URL params, localStorage, or sample data as a fallback.
   const [positions, setPositions] = useState<Position[]>(() => {
+    /** Helper to process raw position data, ensuring `roleType` is set and financials are correct. */
     const processPositions = (positions: any[]): Position[] => {
         return positions.map(p => {
             let position = { ...p };
+            // Backwards compatibility: if roleType isn't set, infer it.
             if (!position.roleType) {
                 const cSuiteRegex = /^(ceo|coo|cfo|cto|cmo|chief)/i;
                 position.roleType = cSuiteRegex.test(position.role) ? 'nonBillable' : 'billable';
             }
+            // Ensure non-billable roles have no rate/utilization.
             if (position.roleType === 'nonBillable') {
                 position.rate = 0;
                 position.utilization = 0;
@@ -149,6 +163,7 @@ const App: React.FC = () => {
         });
     };
 
+    // 1. Check for data in URL parameters (for sharing).
     const urlParams = new URLSearchParams(window.location.search);
     const data = urlParams.get('data');
     if (data) {
@@ -156,7 +171,7 @@ const App: React.FC = () => {
             const decodedData = atob(data);
             const parsedPositions = processPositions(JSON.parse(decodedData));
             if (Array.isArray(parsedPositions) && parsedPositions.every(p => 'id' in p && 'role' in p)) {
-                window.history.replaceState({}, '', window.location.pathname);
+                window.history.replaceState({}, '', window.location.pathname); // Clean URL after loading
                 return parsedPositions;
             }
         } catch (error) {
@@ -164,6 +179,7 @@ const App: React.FC = () => {
         }
     }
 
+    // 2. If no URL data, check local storage (for persistence).
     try {
         const savedPositions = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
         if (savedPositions) {
@@ -176,12 +192,14 @@ const App: React.FC = () => {
         console.error("Failed to load positions from localStorage, loading sample data.", error);
     }
     
+    // 3. If nothing else, load initial sample data.
     return initialData.map(p => {
         const financials = calculateFinancials(p, 1 + 30 / 100, 15 / 100, 35 * 44);
         return { ...p, ...financials };
     });
   });
   
+  // --- UI State ---
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [newPositionParentId, setNewPositionParentId] = useState<string | null>(null);
@@ -202,43 +220,89 @@ const App: React.FC = () => {
   const [isSampleNoticeVisible, setIsSampleNoticeVisible] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   
+  // --- Refs for DOM elements ---
   const orgChartRef = useRef<HTMLDivElement>(null);
   const orgStructureRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
-  const isInitialLoad = useRef(true);
+  const isInitialLoad = useRef(true); // Prevents autosave on the very first render.
   
+  // --- Derived State & Memos ---
+  const benefitsMultiplier = useMemo(() => 1 + benefitsPercent / 100, [benefitsPercent]);
+  const overheadMultiplier = useMemo(() => overheadPercent / 100, [overheadPercent]);
+  const annualBillableHours = useMemo(() => workWeekHours * 44, [workWeekHours]); // Assume 44 billable weeks per year
+
+  /** Memoized hierarchical tree structure derived from the flat `positions` array. */
+  const tree = useMemo(() => {
+    const buildTree = (items: Position[], parentId: string | null = null, depth = 0): TreeNode[] => {
+      return items
+        .filter(item => item.managerId === parentId)
+        .map(item => ({
+          ...item,
+          depth,
+          children: buildTree(items, item.id, depth + 1),
+        }));
+    };
+    return buildTree(positions);
+  }, [positions]);
+
+  // --- Effects ---
+
+  /** Loads global settings from local storage on initial app load. */
   useEffect(() => {
     try {
         const savedSettings = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
         if (savedSettings) {
             const { benefitsPercent, overheadPercent, workWeekHours } = JSON.parse(savedSettings);
-            setBenefitsPercent(benefitsPercent || 30);
-            setOverheadPercent(overheadPercent || 15);
-            setWorkWeekHours(workWeekHours || 35);
+            const bp = benefitsPercent || 30;
+            const op = overheadPercent || 15;
+            const wwh = workWeekHours || 35;
+            setBenefitsPercent(bp);
+            setOverheadPercent(op);
+            setWorkWeekHours(wwh);
+            setBenefitsInput(String(bp));
+            setOverheadInput(String(op));
+            setWorkWeekHoursInput(String(wwh));
         }
     } catch (error) {
         console.error("Failed to load settings from localStorage", error);
     }
   }, []);
 
+  /** Debounces updates to the global financial settings to improve INP. */
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      const newBenefits = parseFloat(benefitsInput);
+      const newOverhead = parseFloat(overheadInput);
+      const newWorkWeek = parseFloat(workWeekHoursInput);
+      if (!isNaN(newBenefits) && newBenefits !== benefitsPercent) setBenefitsPercent(newBenefits);
+      if (!isNaN(newOverhead) && newOverhead !== overheadPercent) setOverheadPercent(newOverhead);
+      if (!isNaN(newWorkWeek) && newWorkWeek !== workWeekHours) setWorkWeekHours(newWorkWeek);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [benefitsInput, overheadInput, workWeekHoursInput]);
+
+  /** Determines if the sample data notice should be shown on initial load. */
   useEffect(() => {
     const savedPositions = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
     const urlParams = new URLSearchParams(window.location.search);
     const data = urlParams.get('data');
+    // If there's no saved data and no data from the URL, we're showing the sample data.
     if (!savedPositions && !data) {
         setIsShowingSampleData(true);
         setIsSampleNoticeVisible(true);
     }
   }, []);
 
-
+  /** Handles autosaving of positions and settings to local storage when they change. */
   useEffect(() => {
+    // Skip autosave on the very first render cycle.
     if (isInitialLoad.current) {
         setAutosaveStatus(isUnlocked ? 'saved' : 'disabled');
         isInitialLoad.current = false;
         return;
     }
 
+    // Autosave is a premium feature.
     if (!isUnlocked) {
         setAutosaveStatus('disabled');
         return;
@@ -246,6 +310,7 @@ const App: React.FC = () => {
 
     setAutosaveStatus('saving');
 
+    // Debounce the save operation to avoid excessive writes.
     const handler = setTimeout(() => {
         try {
             const settingsToSave = JSON.stringify({ benefitsPercent, overheadPercent, workWeekHours });
@@ -254,16 +319,18 @@ const App: React.FC = () => {
             setAutosaveStatus('saved');
         } catch (error) {
             console.error("Failed to save to localStorage", error);
+            // Optionally set an 'error' status here.
         }
     }, 1000);
 
-    return () => {
-        clearTimeout(handler);
-    };
+    return () => clearTimeout(handler);
   }, [positions, benefitsPercent, overheadPercent, workWeekHours, isUnlocked]);
 
-
+  /** Recalculates financial data for all positions whenever global settings change. */
   useEffect(() => {
+    // Do not run on initial load if we already have calculated data from storage.
+    if (isInitialLoad.current) return;
+
     setPositions(currentPositions =>
         currentPositions.map(p => {
             const financials = calculateFinancials(p, benefitsMultiplier, overheadMultiplier, annualBillableHours);
@@ -272,6 +339,7 @@ const App: React.FC = () => {
     );
   }, [benefitsMultiplier, overheadMultiplier, annualBillableHours]);
 
+  /** Attaches a scroll listener to show/hide the sticky header. */
   useEffect(() => {
     const handleScroll = () => {
         if (logoRef.current) {
@@ -280,20 +348,32 @@ const App: React.FC = () => {
         }
     };
     window.addEventListener('scroll', handleScroll);
-    return () => {
-        window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  /** Manages the visibility of the "Unlock Successful" toast notification. */
   useEffect(() => {
     if (showUnlockToast) {
-        const timer = setTimeout(() => {
-            setShowUnlockToast(false);
-        }, 5000);
+        const timer = setTimeout(() => setShowUnlockToast(false), 5000);
         return () => clearTimeout(timer);
     }
   }, [showUnlockToast]);
 
+  // --- Data Manipulation Functions ---
+
+  /** Saves the current state to history for the undo feature. */
+  const saveStateForUndo = useCallback((currentState: Position[]) => {
+    setHistory(prev => {
+        const newHistory = [...prev, currentState];
+        // Prune the history to prevent it from growing indefinitely.
+        if (newHistory.length > MAX_HISTORY_SIZE) {
+            return newHistory.slice(newHistory.length - MAX_HISTORY_SIZE);
+        }
+        return newHistory;
+    });
+  }, []);
+
+  /** Adds a new position to the state. */
   const addPosition = (positionInput: PositionInput) => {
     saveStateForUndo(positions);
     const financials = calculateFinancials(positionInput, benefitsMultiplier, overheadMultiplier, annualBillableHours);
@@ -307,6 +387,7 @@ const App: React.FC = () => {
     setIsSampleNoticeVisible(false);
   };
 
+  /** Updates an existing position in the state. */
   const updatePosition = useCallback((positionUpdate: PositionUpdate) => {
     saveStateForUndo(positions);
     const financials = calculateFinancials(positionUpdate, benefitsMultiplier, overheadMultiplier, annualBillableHours);
@@ -317,6 +398,7 @@ const App: React.FC = () => {
     setIsSampleNoticeVisible(false);
   }, [benefitsMultiplier, overheadMultiplier, annualBillableHours, positions, saveStateForUndo]);
 
+  /** Deletes a position and re-parents its children. */
   const deletePosition = (id: string) => {
     saveStateForUndo(positions);
     setPositions(prev => {
@@ -324,6 +406,7 @@ const App: React.FC = () => {
         if (!positionToDelete) return prev;
         
         const parentId = positionToDelete.managerId;
+        // Filter out the deleted position and update managerId for its direct reports.
         const updatedPositions = prev.filter(p => p.id !== id)
           .map(p => p.managerId === id ? { ...p, managerId: parentId } : p);
 
@@ -333,6 +416,7 @@ const App: React.FC = () => {
     setIsSampleNoticeVisible(false);
   };
 
+  /** Clears all positions from the chart. */
   const deleteAllPositions = () => {
     saveStateForUndo(positions);
     setPositions([]);
@@ -341,6 +425,7 @@ const App: React.FC = () => {
     setIsSampleNoticeVisible(false);
   };
 
+  /** Loads the default sample data into the application. */
   const loadSampleData = () => {
     saveStateForUndo(positions);
     const recalculatedSampleData = initialData.map(p => {
@@ -351,9 +436,10 @@ const App: React.FC = () => {
     setIsActionMenuOpen(false);
     setIsShowingSampleData(true);
     setIsSampleNoticeVisible(true);
-    window.history.pushState({}, '', window.location.pathname);
+    window.history.pushState({}, '', window.location.pathname); // Clear URL params if any
   };
 
+  /** Applies a global billable rate to all applicable roles. */
   const handleApplyGlobalRate = () => {
     const rateValue = parseFloat(globalRate);
     if (isNaN(rateValue)) return;
@@ -369,6 +455,7 @@ const App: React.FC = () => {
     setGlobalRate('');
   };
 
+  /** Applies a global utilization percentage to all applicable roles. */
   const handleApplyGlobalUtilization = () => {
     const utilValue = parseFloat(globalUtilization);
     if (isNaN(utilValue)) return;
@@ -384,6 +471,7 @@ const App: React.FC = () => {
     setGlobalUtilization('');
   };
 
+  /** Reverts the `positions` state to the most recent entry in the history. */
   const handleUndo = () => {
     if (history.length === 0) return;
     const lastState = history[history.length - 1];
@@ -392,6 +480,8 @@ const App: React.FC = () => {
     setIsActionMenuOpen(false);
   };
 
+  // --- UI Event Handlers ---
+
   const handleOpenEditorForNew = (managerId: string | null) => {
     setEditingPosition(null);
     setDuplicateSource(null);
@@ -399,10 +489,7 @@ const App: React.FC = () => {
     setIsEditorOpen(true);
   };
   
-  const handleAddRootRole = () => {
-    handleOpenEditorForNew(null);
-    setIsActionMenuOpen(false);
-  };
+  const handleAddRootRole = () => handleOpenEditorForNew(null);
   
   const handleEditPosition = (position: Position) => {
     setEditingPosition(position);
@@ -416,12 +503,14 @@ const App: React.FC = () => {
     setIsEditorOpen(true);
   };
 
+  /** Callback for the PositionEditor to save data and close the modal. */
   const handleSavePosition = (positionData: PositionInput | PositionUpdate) => {
     if ('id' in positionData) {
       updatePosition(positionData as PositionUpdate);
     } else {
       addPosition(positionData as PositionInput);
     }
+    // Reset editor state
     setIsEditorOpen(false);
     setEditingPosition(null);
     setNewPositionParentId(null);
@@ -434,47 +523,34 @@ const App: React.FC = () => {
     setDuplicateSource(null);
   };
 
+  /** Generates a shareable link and CSV data for export. */
   const handleExport = (): { link: string; csv: string } => {
+    // CSV generation
     const headers = ['Role', 'Salary', 'Total Salary', 'Overhead Cost', 'Rate', 'Utilization', 'Revenue', 'Profit'];
     const headerKeys: (keyof Position)[] = ['role', 'salary', 'totalSalary', 'overheadCost', 'rate', 'utilization', 'revenue', 'profit'];
-    
     const csvRows = [
         headers.join(','),
         ...positions.map(pos => 
             headerKeys.map(header => {
                 const value = pos[header];
-                if (typeof value === 'string' && value.includes(',')) {
-                    return `"${value}"`;
-                }
+                if (typeof value === 'string' && value.includes(',')) return `"${value}"`;
                 return value;
             }).join(',')
         )
     ];
-
-    const totals = positions.reduce((acc, pos) => {
-        acc.salary += pos.salary;
-        acc.totalSalary += pos.totalSalary;
-        acc.overheadCost += pos.overheadCost;
-        acc.revenue += pos.revenue;
-        acc.profit += pos.profit;
-        return acc;
-    }, { salary: 0, totalSalary: 0, overheadCost: 0, revenue: 0, profit: 0 });
-
-    const totalsRow = [
-        'Totals',
-        totals.salary,
-        totals.totalSalary,
-        totals.overheadCost,
-        '', 
-        '', 
-        totals.revenue,
-        totals.profit
-    ].join(',');
-
+    // Add totals row to CSV
+    const totals = positions.reduce((acc, pos) => ({
+        salary: acc.salary + pos.salary,
+        totalSalary: acc.totalSalary + pos.totalSalary,
+        overheadCost: acc.overheadCost + pos.overheadCost,
+        revenue: acc.revenue + pos.revenue,
+        profit: acc.profit + pos.profit,
+    }), { salary: 0, totalSalary: 0, overheadCost: 0, revenue: 0, profit: 0 });
+    const totalsRow = ['Totals', totals.salary, totals.totalSalary, totals.overheadCost, '', '', totals.revenue, totals.profit].join(',');
     csvRows.push(totalsRow);
-
     const csvContent = csvRows.join('\n');
     
+    // Shareable link generation
     const dataString = JSON.stringify(positions);
     const encodedData = btoa(dataString);
     const link = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
@@ -482,6 +558,7 @@ const App: React.FC = () => {
     return { link, csv: csvContent };
   };
   
+  /** Handles downloading the org chart as a PNG image. */
   const handleDownloadPng = async () => {
     if (!orgChartRef.current) {
         console.error("Org chart element not found for PNG export.");
@@ -490,8 +567,9 @@ const App: React.FC = () => {
     const element = orgChartRef.current;
     const canvas = await html2canvas(element, {
         backgroundColor: '#161B22',
-        scale: 2,
+        scale: 2, // Higher scale for better resolution
         useCORS: true,
+        // Ensure the canvas captures the full scrollable area of the chart
         width: element.scrollWidth,
         height: element.scrollHeight,
         windowWidth: element.scrollWidth,
@@ -504,6 +582,7 @@ const App: React.FC = () => {
     link.click();
   };
 
+  /** Wrapper to handle export click, checking for unlock status. */
   const handleExportClick = () => {
     setIsActionMenuOpen(false);
     if (isUnlocked) {
@@ -513,6 +592,7 @@ const App: React.FC = () => {
     }
   };
 
+  /** Handles the AI analysis request. */
   const handleRunAnalysis = async () => {
     if (!isUnlocked) {
         setIsUnlockModalOpen(true);
@@ -523,16 +603,14 @@ const App: React.FC = () => {
     setAiAnalysis(null);
 
     try {
-        const positionsWithReportCount = positions.map(p => {
-            const reports = positions.filter(r => r.managerId === p.id);
-            return {
-                ...p,
-                directReports: reports.length
-            };
-        });
+        // Augment data with direct report counts for better analysis.
+        const positionsWithReportCount = positions.map(p => ({
+            ...p,
+            directReports: positions.filter(r => r.managerId === p.id).length
+        }));
 
         const dataForAnalysis = {
-            positions: positionsWithReportCount.map(({ id, managerId, ...rest }) => rest),
+            positions: positionsWithReportCount.map(({ id, managerId, ...rest }) => rest), // Omit IDs for privacy/simplicity
             settings: {
                 benefitsPercent,
                 overheadPercent,
@@ -543,9 +621,7 @@ const App: React.FC = () => {
 
         const response = await fetch('/api/analyze', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dataForAnalysis }),
         });
 
@@ -564,31 +640,7 @@ const App: React.FC = () => {
     }
   };
 
-  const tree = useMemo(() => {
-    const buildTree = (items: Position[], parentId: string | null = null, depth = 0): TreeNode[] => {
-      return items
-        .filter(item => item.managerId === parentId)
-        .map(item => ({
-          ...item,
-          depth,
-          children: buildTree(items, item.id, depth + 1),
-        }));
-    };
-    return buildTree(positions);
-  }, [positions]);
-  
-  const mainContainerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.15, delayChildren: 0.2 }
-    }
-  };
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-  };
-
+  /** Smooth scroll handler for the "Get Started" button. */
   const handleGetStartedClick = () => {
     if (orgStructureRef.current) {
         // The sticky header is 64px (h-16). We add extra space for better visual alignment.
@@ -603,8 +655,20 @@ const App: React.FC = () => {
     }
   };
 
+  // --- Animation Variants ---
+  const mainContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.2 } }
+  };
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  };
+
+  // --- Render ---
   return (
     <div className="min-h-screen text-gray-200 p-4 sm:p-6 lg:p-8">
+      {/* The sticky header is rendered conditionally when the user scrolls past the main header. */}
       <AnimatePresence>
         {isStickyHeaderVisible && (
             <StickyHeader
@@ -623,6 +687,7 @@ const App: React.FC = () => {
         )}
       </AnimatePresence>
       <div className="max-w-7xl mx-auto">
+        {/* --- Hero/Header Section --- */}
         <header className="text-center" style={{ margin: '2rem 0 6rem 0' }}>
             <div ref={logoRef} className="font-parkinsans" style={{ fontSize: '1.5rem', marginBottom: '4.5rem' }}>
                 <span className="text-brand-accent">Team</span><span className="text-white">Ledger</span>
@@ -643,16 +708,19 @@ const App: React.FC = () => {
             </div>
         </header>
 
+        {/* --- Main Content --- */}
         <motion.main 
           className="space-y-12"
           variants={mainContainerVariants}
           initial="hidden"
           animate="visible"
         >
+          {/* --- Organizational Structure Section --- */}
           <motion.div variants={itemVariants} ref={orgStructureRef}>
             <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
               <div className="flex items-center space-x-4">
                 <h2 className="text-2xl font-semibold">Organizational Structure</h2>
+                {/* View switcher: Tree vs. List */}
                 <div className="flex items-center rounded-lg bg-brand-surface p-1 border border-brand-border">
                   <button onClick={() => setChartView('tree')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'tree' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Tree</button>
                   <button onClick={() => setChartView('list')} className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${chartView === 'list' ? 'bg-brand-accent/80 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>List</button>
@@ -688,6 +756,7 @@ const App: React.FC = () => {
                   </p>
                 </div>
               )}
+              {/* Animated switch between Tree and List views */}
               <AnimatePresence mode="wait">
                   <motion.div
                       key={chartView}
@@ -718,6 +787,7 @@ const App: React.FC = () => {
                     )}
                     </>
                   ) : (
+                      // Empty state for the org chart
                       <div className="text-center text-gray-400 py-12 flex flex-col items-center">
                           <InformationCircleIcon className="w-16 h-16 text-gray-600 mb-4" />
                           <h3 className="text-lg font-semibold text-white">Your organizational chart is empty.</h3>
@@ -738,6 +808,7 @@ const App: React.FC = () => {
             </div>
           </motion.div>
           
+          {/* --- Financial Breakdown Section --- */}
           <motion.div variants={itemVariants}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-semibold">Financial Breakdown</h2>
@@ -753,12 +824,13 @@ const App: React.FC = () => {
                   </motion.div>
               </motion.button>
             </div>
-             <AnimatePresence>
+            {/* Collapsible settings panel */}
+            <AnimatePresence>
               {isSettingsOpen && (
                 <motion.div
-                  initial={{ height: 0, opacity: 0, y: -10 }}
-                  animate={{ height: 'auto', opacity: 1, y: 0, transition: { y: { duration: 0.2 }, opacity: { duration: 0.3, delay: 0.1 } } }}
-                  exit={{ height: 0, opacity: 0, y: -10, transition: { height: { duration: 0.3 }, opacity: { duration: 0.2 } } }}
+                  initial={{ maxHeight: 0, opacity: 0 }}
+                  animate={{ maxHeight: '420px', opacity: 1, transition: { opacity: { duration: 0.3, delay: 0.1 } } }}
+                  exit={{ maxHeight: 0, opacity: 0, transition: { opacity: { duration: 0.2 } } }}
                   className="overflow-hidden"
                 >
                   <div className="bg-brand-surface/50 p-6 rounded-lg border border-brand-border mb-4">
@@ -771,7 +843,7 @@ const App: React.FC = () => {
                         <p className="mt-1 text-xs text-gray-400">Accounts for benefits, taxes, etc.</p>
                         <div className="mt-2 flex rounded-md shadow-sm">
                           <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-brand-border bg-gray-700 text-gray-300 sm:text-sm">Salary +</span>
-                          <input type="number" id="benefits-percent" value={benefitsPercent} onChange={e => setBenefitsPercent(parseFloat(e.target.value) || 0)} className="block w-full flex-1 rounded-none bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
+                          <input type="number" id="benefits-percent" value={benefitsInput} onChange={e => setBenefitsInput(e.target.value)} className="block w-full flex-1 rounded-none bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
                           <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-brand-border bg-gray-700 text-gray-300 sm:text-sm">%</span>
                         </div>
                       </div>
@@ -779,7 +851,7 @@ const App: React.FC = () => {
                         <label htmlFor="overhead-percent" className="block text-sm font-medium text-gray-300">Overhead Cost Multiplier</label>
                         <p className="mt-1 text-xs text-gray-400">Accounts for rent, software, etc.</p>
                         <div className="mt-2 flex rounded-md shadow-sm">
-                          <input type="number" id="overhead-percent" value={overheadPercent} onChange={e => setOverheadPercent(parseFloat(e.target.value) || 0)} className="block w-full flex-1 rounded-none rounded-l-md bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
+                          <input type="number" id="overhead-percent" value={overheadInput} onChange={e => setOverheadInput(e.target.value)} className="block w-full flex-1 rounded-none rounded-l-md bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
                           <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-brand-border bg-gray-700 text-gray-300 sm:text-sm">% of Total Salary</span>
                         </div>
                       </div>
@@ -787,7 +859,7 @@ const App: React.FC = () => {
                         <label htmlFor="work-week-hours" className="block text-sm font-medium text-gray-300">Work Week (Hours)</label>
                         <p className="mt-1 text-xs text-gray-400">Affects Revenue totals.</p>
                         <div className="mt-2 flex rounded-md shadow-sm">
-                          <input type="number" id="work-week-hours" value={workWeekHours} onChange={e => setWorkWeekHours(parseFloat(e.target.value) || 0)} className="block w-full flex-1 rounded-md bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
+                          <input type="number" id="work-week-hours" value={workWeekHoursInput} onChange={e => setWorkWeekHoursInput(e.target.value)} className="block w-full flex-1 rounded-md bg-gray-900 border border-brand-border px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent sm:text-sm" />
                         </div>
                       </div>
                       
@@ -831,6 +903,7 @@ const App: React.FC = () => {
             />
           </motion.div>
           
+          {/* --- AI Analysis Section --- */}
           <motion.div variants={itemVariants}>
             <AIAnalysis
                 isUnlocked={isUnlocked}
@@ -841,6 +914,7 @@ const App: React.FC = () => {
             />
           </motion.div>
 
+          {/* --- Content/About Section --- */}
           <motion.div variants={itemVariants} className="pt-16 pb-8">
               <div className="max-w-3xl mx-auto text-left space-y-12">
                   <h2 className="text-3xl font-bold mb-0 text-white text-center">About TeamLedger</h2>
@@ -893,6 +967,7 @@ const App: React.FC = () => {
               </div>
           </motion.div>
         </motion.main>
+        {/* --- Footer --- */}
         <footer className="text-center pt-8 pb-4 mt-8 border-t border-brand-border/20">
             <p className="text-sm text-gray-400">
                 &copy; {new Date().getFullYear()} TeamLedger by <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">Jeff Archibald</a>.
@@ -903,6 +978,11 @@ const App: React.FC = () => {
             </p>
         </footer>
       </div>
+
+      {/* --- Modals & Global UI Components --- */}
+      {/* These components are rendered outside the main layout flow and are controlled by state. */}
+      
+      {/* Position Editor Modal */}
       <AnimatePresence>
         {isEditorOpen && (
           <PositionEditor
@@ -915,6 +995,8 @@ const App: React.FC = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* Confirm Delete All Modal */}
       <AnimatePresence>
         {isDeleteAllConfirmOpen && (
            <ConfirmDeleteModal 
@@ -923,6 +1005,8 @@ const App: React.FC = () => {
            />
         )}
       </AnimatePresence>
+
+      {/* Export/Share Modal */}
       <AnimatePresence>
         {isExportModalOpen && (
            <ExportModal 
@@ -933,6 +1017,8 @@ const App: React.FC = () => {
            />
         )}
       </AnimatePresence>
+
+      {/* Unlock Features Modal */}
       <AnimatePresence>
         {isUnlockModalOpen && (
             <UnlockModal 
@@ -944,6 +1030,8 @@ const App: React.FC = () => {
             />
         )}
       </AnimatePresence>
+      
+      {/* Help Modal */}
       <AnimatePresence>
         {isHelpModalOpen && (
             <HelpModal 
@@ -952,30 +1040,39 @@ const App: React.FC = () => {
             />
         )}
       </AnimatePresence>
+
+      {/* Privacy Policy Modal */}
       <AnimatePresence>
         {isPrivacyModalOpen && (
             <PrivacyPolicyModal onClose={() => setIsPrivacyModalOpen(false)} />
         )}
       </AnimatePresence>
+
+      {/* Success Toast Notification */}
       <AnimatePresence>
         {showUnlockToast && <SuccessToast />}
       </AnimatePresence>
+      
+      {/* Cookie Consent Banner */}
       <CookieConsent onPrivacyClick={() => setIsPrivacyModalOpen(true)} />
+      
+      {/* Mobile Notice Banner */}
+      <MobileNotice />
     </div>
   );
 };
 
+// --- Sub-components defined within App.tsx for co-location and simplicity ---
+
+/**
+ * @description A confirmation modal for the "Delete All" action.
+ */
 interface ConfirmDeleteModalProps {
   onClose: () => void;
   onConfirm: () => void;
 }
-
 const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onClose, onConfirm }) => {
-    const backdropVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1 }
-    };
-    // FIX: Add Variants type to fix framer-motion type error
+    const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
@@ -984,10 +1081,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onClose, onConf
     return (
         <motion.div 
             className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
+            variants={backdropVariants} initial="hidden" animate="visible" exit="hidden"
         >
           <motion.div 
             className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-sm"
@@ -1006,22 +1100,20 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onClose, onConf
     )
 }
 
+/**
+ * @description A modal that provides quick instructions on how to use the app.
+ */
 interface HelpModalProps {
     onClose: () => void;
     isShowingSampleData: boolean;
 }
-
 const HelpModal: React.FC<HelpModalProps> = ({ onClose, isShowingSampleData }) => {
-    const backdropVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1 }
-    };
+    const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
         exit: { opacity: 0, y: 20, scale: 0.95 }
     };
-
     const UserPlusIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3.375 19.5h17.25a2.25 2.25 0 0 0 2.25-2.25v-1.5a2.25 2.25 0 0 0-2.25-2.25H3.375a2.25 2.25 0 0 0-2.25 2.25v1.5a2.25 2.25 0 0 0 2.25 2.25Z" />
@@ -1076,12 +1168,13 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose, isShowingSampleData }) =
     );
 };
 
-
+/**
+ * @description Modal for unlocking premium features by providing an email address.
+ */
 interface UnlockModalProps {
     onClose: () => void;
     onUnlockSuccess: () => void;
 }
-
 const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) => {
     const { unlockApp } = useAuth();
     const [email, setEmail] = useState('');
@@ -1093,7 +1186,14 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
         e.preventDefault();
         if (status !== 'idle' || !email) return;
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        // Use a more robust, industry-standard regex for client-side format validation.
+        // This is a first line of defense. The ultimate validation (including MX records)
+        // is handled by the backend service (FormSpree).
+        const emailRegex = new RegExp(
+            /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+        );
+
+        if (!emailRegex.test(email)) {
             setEmailError('Please enter a valid email address.');
             return;
         }
@@ -1110,10 +1210,7 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
         }
     };
     
-    const backdropVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1 }
-    };
+    const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
@@ -1123,59 +1220,35 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
     return (
         <motion.div 
             className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            onClick={onClose}
+            variants={backdropVariants} initial="hidden" animate="visible" exit="hidden" onClick={onClose}
         >
           <motion.div 
             className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-md"
-            variants={modalVariants}
-            onClick={(e) => e.stopPropagation()}
+            variants={modalVariants} onClick={(e) => e.stopPropagation()}
           >
             <form onSubmit={handleSubmit}>
-              <div className="p-6">
+              <div className="px-6 pt-6 pb-4">
                 <h3 className="text-xl font-bold text-white">Unlock All Features</h3>
                 <p className="text-gray-400 mt-2">Get the full picture. Unlock these powerful features by entering your email:</p>
                 
                 <ul className="space-y-3 mt-4 text-gray-300">
-                    <li className="flex items-start">
-                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
-                        <span>Automatically save your work to this browser</span>
-                    </li>
-                    <li className="flex items-start">
-                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
-                        <span>Unlock the complete financial breakdown</span>
-                    </li>
-                    <li className="flex items-start">
-                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
-                        <span>Enable sharing & exporting</span>
-                    </li>
-                    <li className="flex items-start">
-                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
-                        <span>Get custom AI insights and SWOT on your org structure so you can operate confidently</span>
-                    </li>
-                     <li className="flex items-start">
-                        <CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" />
-                        <span>Be notified of new feature releases</span>
-                    </li>
+                    <li className="flex items-start"><CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" /><span>Automatically save your work to this browser</span></li>
+                    <li className="flex items-start"><CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" /><span>Unlock the complete financial breakdown</span></li>
+                    <li className="flex items-start"><CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" /><span>Enable sharing & exporting</span></li>
+                    <li className="flex items-start"><CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" /><span>Get custom AI insights and SWOT on your org structure so you can operate confidently</span></li>
+                     <li className="flex items-start"><CheckCircleIcon className="w-5 h-5 mr-3 mt-0.5 text-brand-accent flex-shrink-0" /><span>Be notified of new feature releases</span></li>
                 </ul>
                 
-                <p className="text-gray-400 mt-4 text-sm">No fees, no spam, and you can unsubscribe at any time.</p>
-                
-                <div className="mt-4">
+                <div className="mt-6">
                   <input
-                      type="email"
-                      value={email}
+                      type="email" value={email}
                       onChange={(e) => {
                           setEmail(e.target.value);
                           if (emailError) setEmailError('');
                           if (apiError) setApiError('');
                       }}
-                      placeholder="your@email.com"
-                      required
-                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:border-brand-accent ${emailError || apiError ? 'border-red-500 focus:ring-red-500' : 'border-brand-border focus:ring-brand-accent'}`}
+                      placeholder="your@email.com" required
+                      className={`w-full bg-white border rounded-lg px-3 py-2 text-gray-900 placeholder-gray-500 focus:ring-2 focus:border-brand-accent ${emailError || apiError ? 'border-red-500 focus:ring-red-500' : 'border-brand-border focus:ring-brand-accent'}`}
                   />
                   {emailError && <p className="text-red-400 text-sm mt-1">{emailError}</p>}
                 </div>
@@ -1186,26 +1259,24 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
                     </div>
                 )}
               </div>
-              <div className="bg-gray-900/50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-start sm:items-center sm:space-x-4 rounded-b-lg">
-                <motion.button 
-                    type="submit" 
-                    disabled={status === 'submitting' || !email} 
-                    whileHover={{ scale: 1.05 }} 
-                    whileTap={{ scale: 0.95 }} 
-                    className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                    {status === 'submitting' ? 'Unlocking...' : 'Unlock Now'}
-                    <SparklesIcon className="w-4 h-4 ml-2" />
-                </motion.button>
-                <motion.button 
-                    type="button" 
-                    whileHover={{ y: -2 }} 
-                    whileTap={{ y: 0 }} 
-                    onClick={onClose} 
-                    className="text-gray-400 hover:text-white text-sm transition-colors font-semibold py-2 sm:py-0"
-                >
-                    Cancel
-                </motion.button>
+              <div className="bg-gray-900/50 px-6 py-4 rounded-b-lg">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-start sm:items-center sm:space-x-4">
+                  <motion.button 
+                      type="submit" disabled={status === 'submitting' || !email} 
+                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} 
+                      className="bg-brand-accent/80 hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                      {status === 'submitting' ? 'Unlocking...' : 'Unlock Now'}
+                      <SparklesIcon className="w-4 h-4 ml-2" />
+                  </motion.button>
+                  <motion.button 
+                      type="button" whileHover={{ y: -2 }} whileTap={{ y: 0 }} 
+                      onClick={onClose} className="text-gray-400 hover:text-white text-sm transition-colors font-semibold py-2 sm:py-0"
+                  >
+                      Cancel
+                  </motion.button>
+                </div>
+                <p className="text-center text-gray-500 text-xs mt-4">No fees, no spam, and you can unsubscribe at any time.</p>
               </div>
             </form>
           </motion.div>
@@ -1213,6 +1284,9 @@ const UnlockModal: React.FC<UnlockModalProps> = ({ onClose, onUnlockSuccess }) =
     );
 };
 
+/**
+ * @description A toast notification that appears on successful app unlock.
+ */
 const SuccessToast: React.FC = () => {
     return (
         <motion.div
@@ -1231,29 +1305,29 @@ const SuccessToast: React.FC = () => {
     );
 };
 
+/**
+ * @description Modal for exporting data as a shareable link, CSV, or PNG.
+ */
 interface ExportModalProps {
     onClose: () => void;
     onConfirm: () => { link: string; csv: string };
     onDownloadPng: () => Promise<void>;
     isPngExportAvailable: boolean;
 }
-
 const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloadPng, isPngExportAvailable }) => {
     const [shareableLink, setShareableLink] = useState('');
     const [csvData, setCsvData] = useState('');
     const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
     const [isGeneratingPng, setIsGeneratingPng] = useState(false);
 
+    // Generate the export data when the modal opens.
     useEffect(() => {
         const { link, csv } = onConfirm();
         setShareableLink(link);
         setCsvData(csv);
     }, [onConfirm]);
 
-    const backdropVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1 }
-    };
+    const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
@@ -1291,14 +1365,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloa
         }
     };
 
-
     return (
         <motion.div 
             className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
+            variants={backdropVariants} initial="hidden" animate="visible" exit="hidden"
         >
           <motion.div 
             className="bg-brand-surface rounded-lg shadow-soft-glow-lg border border-brand-border w-full max-w-md"
@@ -1312,14 +1382,11 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloa
                     <label className="block text-sm font-medium text-gray-300 mb-1">Shareable Link</label>
                     <div className="flex space-x-2">
                         <input
-                            type="text"
-                            readOnly
-                            value={shareableLink}
+                            type="text" readOnly value={shareableLink}
                             className="w-full bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
                         />
                         <motion.button 
-                            onClick={handleCopyLink} 
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} 
+                            onClick={handleCopyLink} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} 
                             className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors"
                         >
                             {copyStatus === 'copied' ? 'Copied!' : 'Copy'}
@@ -1349,6 +1416,5 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onConfirm, onDownloa
         </motion.div>
     )
 }
-
 
 export default App;

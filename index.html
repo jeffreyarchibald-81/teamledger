@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-VTT2L9LG5J"></script>
       <script>
         window.dataLayer = window.dataLayer || [];
@@ -19,7 +20,7 @@
     <meta name="description" content="A smarter organizational structure chart maker, built with profitability in mind. Model your team structure and instantly see the financial impact of every role." />
     <link rel="canonical" href="https://teamledger.app/" />
     
-    <!-- Social Sharing / Open Graph -->
+    <!-- Social Sharing / Open Graph for platforms like Facebook, LinkedIn -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://teamledger.app/">
     <meta property="og:title" content="TeamLedger | Organizational Structure Chart Maker">
@@ -27,7 +28,7 @@
     <meta property="og:image" content="https://teamledger.app/og-image.png"> 
     <meta property="og:site_name" content="TeamLedger">
     
-    <!-- Twitter -->
+    <!-- Twitter Card for social sharing on Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://teamledger.app/">
     <meta name="twitter:title" content="TeamLedger | Organizational Structure Chart Maker">
@@ -44,10 +45,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Preload the WOFF2 font file for the LCP element (H1 uses font-bold which is 700 weight) -->
+    <link rel="preload" href="https://fonts.gstatic.com/s/manrope/v15/xn7gYHE41ni1AdIRggqxSvfedN-SU2uf.woff2" as="font" type="font/woff2" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Parkinsans&display=swap" rel="stylesheet">
     
     <!-- Analytics -->
-    <script src="https://cdn.amplitude.com/libs/analytics-browser-2.11.1-min.js.gz"></script><script src="https://cdn.amplitude.com/libs/plugin-session-replay-browser-1.8.0-min.js.gz"></script><script>window.amplitude.add(window.sessionReplay.plugin({sampleRate: 1}));window.amplitude.init('bf4d34aa4c682fe4cc035cb2272ac587', {"autocapture":{"elementInteractions":true}});</script>
+    <script defer src="https://cdn.amplitude.com/libs/analytics-browser-2.11.1-min.js.gz"></script>
+    <script defer src="https://cdn.amplitude.com/libs/plugin-session-replay-browser-1.8.0-min.js.gz"></script>
+    <script>
+      window.addEventListener('load', () => {
+        window.amplitude.add(window.sessionReplay.plugin({sampleRate: 1}));
+        window.amplitude.init('bf4d34aa4c682fe4cc035cb2272ac587', {"autocapture":{"elementInteractions":true}});
+      });
+    </script>
     <script type="text/javascript">
       (function(c,l,a,r,i,t,y){
           c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -56,14 +66,14 @@
       })(window, document, "clarity", "script", "tv8n6dmyto");
     </script>
 
-    <!-- Tailwind Config -->
+    <!-- Tailwind Config: In-browser configuration for Tailwind CSS -->
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Manrope', 'sans-serif'],
-              parkinsans: ['Parkinsans', 'sans-serif'],
+              sans: ['Manrope', 'sans-serif'], // Primary font
+              parkinsans: ['Parkinsans', 'sans-serif'], // Brand/logo font
             },
             colors: {
               'brand-dark': '#0D1117',
@@ -86,34 +96,39 @@
     
     <!-- Custom CSS -->
     <style>
+      /* Defines a subtle gradient background for the entire application. */
       body {
         background: #141E30;  /* fallback for old browsers */
         background: -webkit-linear-gradient(to bottom left, #243B55, #141E30);  /* Chrome 10-25, Safari 5.1-6 */
         background: linear-gradient(to bottom left, #243B55, #141E30); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
       }
+      /* Defines a gradient used for card backgrounds to give them depth. */
       .card-gradient {
         background-image: linear-gradient(145deg, rgba(31, 41, 55, 0.5) 0%, rgba(22, 27, 34, 0.8) 100%);
       }
+
+      /* Core styles for rendering the organizational chart tree structure. */
       .org-tree {
-        display: inline-block;
+        display: inline-block; /* Allows the tree to size based on content. */
         text-align: center;
       }
+      /* Styles for the connecting lines and layout of tree nodes. */
       .org-tree ul {
           padding-top: 20px;
           position: relative;
           transition: all 0.5s;
-          /* Symmetrical layout using flexbox */
+          /* Symmetrical layout using flexbox. */
           display: flex;
           justify-content: center;
       }
       .org-tree li {
-          /* float: left; -- REMOVED for symmetrical layout */
           text-align: center;
           list-style-type: none;
           position: relative;
           padding: 20px 5px 0 5px;
           transition: all 0.5s;
       }
+      /* The ::before and ::after pseudo-elements are used to draw the connecting lines. */
       .org-tree li::before, .org-tree li::after {
           content: '';
           position: absolute;
@@ -128,6 +143,7 @@
           left: 50%;
           border-left: 2px solid #4b5563;
       }
+      /* Rules to handle nodes with only one child or edge cases like the first/last child. */
       .org-tree li:only-child::after, .org-tree li:only-child::before {
           display: none;
       }
@@ -144,6 +160,7 @@
       .org-tree li:first-child::after {
           border-radius: 5px 0 0 0;
       }
+      /* The vertical line coming down from a parent node. */
       .org-tree ul ul::before {
           content: '';
           position: absolute;
@@ -157,12 +174,13 @@
         display: inline-block;
         min-width: 140px;
       }
+      /* Override Tailwind's default max-width for better content layout. */
       .max-w-3xl {
         max-width: 50rem;
       }
     </style>
     
-    <!-- Structured Data -->
+    <!-- Structured Data (JSON-LD for Search Engines) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -197,6 +215,7 @@
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
     <script>
+      // Userback.io widget for user feedback.
       window.Userback = window.Userback || {};
       Userback.access_token = "A-EXm4yXM37ZulY3Dixfib2xtna";
       (function(d) {

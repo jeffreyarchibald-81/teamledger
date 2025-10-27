@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+/** Key used to store the user's consent in local storage. */
 const COOKIE_CONSENT_KEY = 'teamledger-cookie-consent';
 
+/**
+ * @interface CookieConsentProps
+ * @description Defines the props for the CookieConsent component.
+ */
 interface CookieConsentProps {
+    /** Callback function to open the privacy policy modal. */
     onPrivacyClick: () => void;
 }
 
@@ -13,15 +19,21 @@ const CookieIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
+/**
+ * @description A component that displays a cookie consent banner to first-time visitors.
+ * It starts as a small icon and expands into a full banner on click.
+ * The user's consent is stored in local storage to prevent it from appearing again.
+ */
 const CookieConsent: React.FC<CookieConsentProps> = ({ onPrivacyClick }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
+    /** Effect to check if consent has already been given. */
     useEffect(() => {
         try {
             const consentGiven = window.localStorage.getItem(COOKIE_CONSENT_KEY);
             if (!consentGiven) {
-                // Use a timeout to avoid layout shift on initial load
+                // Use a timeout to avoid layout shift and be less intrusive on initial load.
                 const timer = setTimeout(() => setIsVisible(true), 1500);
                 return () => clearTimeout(timer);
             }
@@ -30,22 +42,26 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onPrivacyClick }) => {
         }
     }, []);
 
+    /** Handles accepting the consent and hiding the banner permanently. */
     const handleAccept = () => {
         try {
             window.localStorage.setItem(COOKIE_CONSENT_KEY, 'true');
             setIsVisible(false);
         } catch (error) {
             console.error("Could not write to localStorage for cookie consent:", error);
+            // Still hide the banner for the current session even if storage fails.
             setIsVisible(false);
         }
     };
 
+    /** Expands the banner from the small icon view. */
     const handleIconClick = () => {
         setIsExpanded(true);
     };
 
     return (
         <AnimatePresence>
+            {/* Collapsed icon view */}
             {isVisible && !isExpanded && (
                  <motion.button
                     onClick={handleIconClick}
@@ -60,6 +76,7 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onPrivacyClick }) => {
                     <CookieIcon className="w-6 h-6 text-yellow-200" />
                  </motion.button>
             )}
+            {/* Expanded banner view */}
             {isVisible && isExpanded && (
                 <motion.div
                     className="fixed bottom-4 left-4 bg-brand-surface/80 backdrop-blur-md border border-brand-border rounded-lg shadow-soft-glow-lg p-4 max-w-sm z-[99]"

@@ -4,16 +4,24 @@ import React from 'react';
 // FIX: import Variants to fix framer-motion type error
 import { motion, Variants } from 'framer-motion';
 
+/**
+ * @interface PrivacyPolicyModalProps
+ * @description Defines the props for the PrivacyPolicyModal component.
+ */
 interface PrivacyPolicyModalProps {
+    /** Callback function to close the modal. */
     onClose: () => void;
 }
 
+/**
+ * @description A modal component that displays the application's privacy policy.
+ * The content is hardcoded for simplicity.
+ */
 const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ onClose }) => {
     const backdropVariants = {
         hidden: { opacity: 0 },
         visible: { opacity: 1 }
     };
-    // FIX: Add Variants type to fix framer-motion type error
     const modalVariants: Variants = {
         hidden: { opacity: 0, y: 30, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
@@ -31,6 +39,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ onClose }) => {
                 variants={modalVariants}
                 onClick={(e) => e.stopPropagation()}
             >
+                {/* The content container is scrollable for smaller viewports. */}
                 <div className="p-6 max-h-[80vh] overflow-y-auto">
                     <h3 className="text-xl font-bold text-white mb-4">Privacy Policy</h3>
                     <div className="space-y-4 text-gray-300 text-sm">
