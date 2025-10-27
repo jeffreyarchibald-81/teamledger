@@ -12,6 +12,8 @@ import OrgChartListView from './components/OrgChartListView';
 import AIAnalysis from './components/AIAnalysis';
 import { useAuth } from './auth';
 import StickyHeader from './components/StickyHeader';
+import CookieConsent from './components/CookieConsent';
+import PrivacyPolicyModal from './components/PrivacyPolicyModal';
 
 const POSITIONS_STORAGE_KEY = 'teamledger-positions';
 const SETTINGS_STORAGE_KEY = 'teamledger-settings';
@@ -198,6 +200,7 @@ const App: React.FC = () => {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isShowingSampleData, setIsShowingSampleData] = useState(false);
   const [isSampleNoticeVisible, setIsSampleNoticeVisible] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   
   const orgChartRef = useRef<HTMLDivElement>(null);
   const orgStructureRef = useRef<HTMLDivElement>(null);
@@ -890,6 +893,15 @@ const App: React.FC = () => {
               </div>
           </motion.div>
         </motion.main>
+        <footer className="text-center pt-8 pb-4 mt-8 border-t border-brand-border/20">
+            <p className="text-sm text-gray-400">
+                &copy; {new Date().getFullYear()} TeamLedger by <a href="https://jeffarchibald.ca" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">Jeff Archibald</a>.
+                {' '}|{' '}
+                <button onClick={() => setIsPrivacyModalOpen(true)} className="hover:underline">
+                    Privacy Policy
+                </button>
+            </p>
+        </footer>
       </div>
       <AnimatePresence>
         {isEditorOpen && (
@@ -941,8 +953,14 @@ const App: React.FC = () => {
         )}
       </AnimatePresence>
       <AnimatePresence>
+        {isPrivacyModalOpen && (
+            <PrivacyPolicyModal onClose={() => setIsPrivacyModalOpen(false)} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
         {showUnlockToast && <SuccessToast />}
       </AnimatePresence>
+      <CookieConsent onPrivacyClick={() => setIsPrivacyModalOpen(true)} />
     </div>
   );
 };
