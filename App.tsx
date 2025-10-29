@@ -890,7 +890,7 @@ const App: React.FC = () => {
                 <motion.div
                   id="financial-settings-panel"
                   initial={{ maxHeight: 0, opacity: 0 }}
-                  animate={{ maxHeight: '420px', opacity: 1, transition: { opacity: { duration: 0.3, delay: 0.1 } } }}
+                  animate={{ maxHeight: '800px', opacity: 1, transition: { opacity: { duration: 0.3, delay: 0.1 } } }}
                   exit={{ maxHeight: 0, opacity: 0, transition: { opacity: { duration: 0.2 } } }}
                   className="overflow-hidden"
                 >
